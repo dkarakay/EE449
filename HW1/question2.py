@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from utils import part2Plots
+from utils.utils import part2Plots
 
 
 def my_conv2d(input_tensor, kernel):
@@ -36,42 +36,27 @@ def my_conv2d(input_tensor, kernel):
 
     print("Output shape: ", output.shape)
 
-    for x in range(o_height):
-        for y in range(o_width):
-            # Slice the input_tensor to extract a (kernel_size, kernel_size) window of pixels centered around (x,y)
-            input_slice = input_tensor[:, :, x:x + f_height, y:y + f_width]
-
-            print("Input slice shape: ", input_slice.shape)
-
-
-            print("Kernel shape: ", kernel.shape)
-
-            # Reshape the kernel weight to a 2D tensor of shape (out_channels, in_channels * kernel_size * kernel_size)
-
-            print(i_channels_kernel * f_width * f_height)
-            kernel_reshaped = kernel.reshape(o_channels_kernel, (i_channels_kernel * f_width * f_height))
-
-            print("Kernel reshaped shape: ", kernel_reshaped.shape)
-            # Compute the product between the kernel and the input tensor slice
-            product = input_slice * kernel_reshaped.reshape(1, o_channels_kernel, -1)
-
-            # Sum the elements of the tensor obtained along the last two dimensions (kernel_size, kernel_size).
-            conv_sum = np.sum(product, axis=(2, 3))
-
-            # Set the value of the corresponding output pixel
-            output[:, :, x, y] = conv_sum
+    # 2D convolution
+    for b in range(batch_size):  # batch
+        for x in range(o_height):  # height
+            for y in range(o_width):  # width
+                for o in range(o_channels_kernel):  # output channels
+                    output[b, o, x, y] = np.sum(
+                        input_tensor[b, :, x:x + f_height, y:y + f_width, ] * kernel[o, :, :, :]
+                    )
 
     return output
 
 
-input_sample = np.load('samples_7.npy')
-kernel = np.load('kernel.npy')
+input_sample = np.load('utils/samples_7.npy')
+kernel = np.load('utils/kernel.npy')
 
 my_output = my_conv2d(input_sample, kernel)
 
 part2Plots(out=my_output, save_dir='results/', filename='q2_result')
 
 # Compare with PyTorch's conv2d function
-x_torch = torch.from_numpy(input_sample)
-weight_torch = torch.from_numpy(kernel)
-# output_torch = torch.nn.functional.conv2d(x_torch, weight_torch)
+input_tensor = torch.from_numpy(input_sample).float()
+kernel_tensor = torch.from_numpy(kernel).float()
+output_torch = torch.conv2d(input_tensor, kernel_tensor, stride=1, padding=0)
+part2Plots(out=output_torch.detach().numpy(), save_dir='results/', filename='q2_result_torch')

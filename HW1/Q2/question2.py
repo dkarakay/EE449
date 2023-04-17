@@ -1,6 +1,7 @@
+#   This file contains the code for Question 2
+
 import numpy as np
 import torch
-
 from utils.utils import part2Plots
 
 
@@ -48,15 +49,23 @@ def my_conv2d(input_tensor, kernel):
     return output
 
 
+# Pick based on my Student ID
 input_sample = np.load('utils/samples_7.npy')
 kernel = np.load('utils/kernel.npy')
 
 my_output = my_conv2d(input_sample, kernel)
 
+# Normalize input
+my_output_normalized = (my_output - np.min(my_output)) / (np.max(my_output) - np.min(my_output))
+
 part2Plots(out=my_output, save_dir='results/', filename='q2_result')
+part2Plots(out=my_output_normalized, save_dir='results/', filename='q2_result_normalized')
 
 # Compare with PyTorch's conv2d function
 input_tensor = torch.from_numpy(input_sample).float()
 kernel_tensor = torch.from_numpy(kernel).float()
 output_torch = torch.conv2d(input_tensor, kernel_tensor, stride=1, padding=0)
+output_torch_normalized = (output_torch - torch.min(output_torch)) / (torch.max(output_torch) - torch.min(output_torch))
+
 part2Plots(out=output_torch.detach().numpy(), save_dir='results/', filename='q2_result_torch')
+part2Plots(out=output_torch_normalized.detach().numpy(), save_dir='results/', filename='q2_result_normalized_torch')

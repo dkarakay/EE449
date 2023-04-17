@@ -55,11 +55,15 @@ print(f"Test data size: {len(test_data)}")
 
 valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE, shuffle=False)
 
-my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device)}
+# my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device)}
 # 'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device),
 # }
+my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device), 'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device)}
 
 for model_name, model in my_models.items():
+    if model_name == 'mlp1':
+        continue
+
     print(f"Training {model_name}...")
 
     model_init_time = time.time()

@@ -13,9 +13,9 @@ class MLP1(nn.Module):
 
     def forward(self, x):
         x = x.view(-1, self.input_size)
-        hidden = self.fc1(x)
-        relu = self.relu(hidden)
-        output = self.fc2(relu)
+        x = self.fc1(x)
+        x = self.relu(x)
+        output = self.fc2(x)
         return output
 
 
@@ -26,12 +26,12 @@ class MLP2(nn.Module):
         self.fc1 = nn.Linear(input_size, hidden_size_1)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(hidden_size_1, hidden_size_2, bias=False)
-        self.fc3 = nn.Linear(hidden_size_2, num_classes)
+        self.pred_layer = nn.Linear(hidden_size_2, num_classes)
 
     def forward(self, x):
         x = x.view(-1, self.input_size)
-        hidden_1 = self.fc1(x)
-        relu = self.relu(hidden_1)
-        hidden_2 = self.fc2(relu)
-        output = self.fc2(hidden_2)
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        output = self.pred_layer(x)
         return output

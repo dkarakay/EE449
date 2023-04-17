@@ -16,15 +16,16 @@ from utils.utils import visualizeWeights
 # Hyper-parameters
 EPOCH_SIZE = 15
 BATCH_SIZE = 50
-TRAIN_COUNT = 10
+TRAIN_COUNT = 1
 
-# I tested and saw that CPU is faster than GPU on M1 Pro
-
-# MPS for GPU support on M1
-# device = torch.device("mps")
+# I tested and saw that CPU is faster than GPU on M1 Pro for MLPs
 
 # CPU
-device = torch.device("cpu")
+# device = torch.device("cpu")
+
+# MPS for GPU support on M1
+device = torch.device("mps")
+
 print(device)
 
 init_time = time.time()
@@ -58,10 +59,15 @@ valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE,
 # my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device)}
 # 'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device),
 # }
-my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device), 'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device)}
+my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device),
+             'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device),
+             'cnn3': my_models.CNN3().to(device),
+             'cnn4': my_models.CNN4().to(device),
+             'cnn5': my_models.CNN5().to(device),
+             }
 
 for model_name, model in my_models.items():
-    if model_name == 'mlp1':
+    if model_name == 'mlp1' or model_name == 'mlp2':
         continue
 
     print(f"Training {model_name}...")

@@ -86,7 +86,7 @@ class CNN4(nn.Module):
         self.relu4 = nn.ReLU()
         self.pool4 = nn.MaxPool2d(kernel_size=2)
 
-        self.pred_layer = nn.Linear(in_features=144, out_features=10)
+        self.pred_layer = nn.Linear(in_features=256, out_features=10)
 
     def forward(self, x):
         x = self.first(x)
@@ -132,7 +132,7 @@ class CNN5(nn.Module):
         self.relu6 = nn.ReLU()
         self.pool6 = nn.MaxPool2d(kernel_size=2)
 
-        self.pred_layer = nn.Linear(in_features=144, out_features=10)
+        self.pred_layer = nn.Linear(in_features=128, out_features=10)
 
     def forward(self, x):
         x = self.first(x)

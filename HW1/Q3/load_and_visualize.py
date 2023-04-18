@@ -5,13 +5,17 @@ import pickle
 
 from utils.utils import part3Plots, visualizeWeights
 
-filename = 'results/question_3_mlp1.pkl'
-with open(filename, 'rb') as f:
-    loaded_dict = pickle.load(f)
+temp = []
+for name in ['cnn5']:
+    filename = f'results/question_3_{name}.pkl'
+    with open(filename, 'rb') as f:
+        loaded_dict = pickle.load(f)
+        temp.append(loaded_dict)
+        print(loaded_dict.keys())
 
-    print(loaded_dict.keys())
+        #loaded_dict['test_acc'] = loaded_dict['test_acc']
+        #loaded_dict['val_acc_curve'] = loaded_dict['val_acc_curve'] * 100
+        #loaded_dict['train_acc_curve'] = loaded_dict['train_acc_curve'] * 100
 
-    visualizeWeights(loaded_dict['weights'], save_dir='results/',
-                     filename='question_3_weights_'+loaded_dict['name'].replace(' ', '_'))
 
-    # part3Plots (
+part3Plots(temp, save_dir='results/', filename='question_32')

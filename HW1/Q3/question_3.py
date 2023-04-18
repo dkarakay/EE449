@@ -16,24 +16,24 @@ from utils.utils import visualizeWeights
 # Hyper-parameters
 EPOCH_SIZE = 15
 BATCH_SIZE = 50
-TRAIN_COUNT = 1
+TRAIN_COUNT = 10
 
 # I tested and saw that CPU is faster than GPU on M1 Pro for MLPs
 
 # CPU
-# device = torch.device("cpu")
+device = torch.device("cpu")
 
 # MPS for GPU support on M1
-device = torch.device("mps")
+# device = torch.device("mps")
 
-print(device)
+print(f"Using device: {device}...")
 
 init_time = time.time()
 
 # Transformations
 transform = transforms.Compose([
     torchvision.transforms.ToTensor(),
-    torchvision.transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     torchvision.transforms.Grayscale()
 ])
 
@@ -48,7 +48,7 @@ print("Sample image size: ", img.size())
 train_data, valid_data = train_test_split(train_data, test_size=0.1, random_state=42)
 
 # Load test data
-test_data = torchvision.datasets.CIFAR10('data/', train=False, transform=transform)
+test_data = torchvision.datasets.CIFAR10('data/', train=False, download=True, transform=transform)
 
 print(f"Training data size: {len(train_data)}")
 print(f"Validation data size: {len(valid_data)}")
@@ -56,18 +56,15 @@ print(f"Test data size: {len(test_data)}")
 
 valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE, shuffle=False)
 
-# my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device)}
-# 'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device),
-# }
 my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device),
              'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device),
-             'cnn3': my_models.CNN3().to(device),
-             'cnn4': my_models.CNN4().to(device),
-             'cnn5': my_models.CNN5().to(device),
+             # 'cnn3': my_models.CNN3().to(device),
+             # 'cnn4': my_models.CNN4().to(device),
+             # 'cnn5': my_models.CNN5().to(device),
              }
 
 for model_name, model in my_models.items():
-    if model_name == 'mlp1' or model_name == 'mlp2':
+    if model_name.startswith('cnn'):
         continue
 
     print(f"Training {model_name}...")
@@ -86,18 +83,21 @@ for model_name, model in my_models.items():
     test_acc_history_total = []
 
     for tc in range(TRAIN_COUNT):
-
         # Initialize lists for training and validation accuracy and loss
         train_acc_history = []
         train_loss_history = []
         valid_acc_history = []
         test_acc_history = []
 
+        train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+
         for epoch in range(EPOCH_SIZE):
             # Train the model
             start_time = time.time()
-            train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
             total_step = len(train_generator)
+
+            train_loss = 0
+            train_acc = 0
 
             for i, data in enumerate(train_generator):
                 model.train()
@@ -114,17 +114,17 @@ for model_name, model in my_models.items():
                 loss.backward()
                 optimizer.step()
 
-                if i % 10 == 9:
-                    model.eval()
-                    # Compute training accuracy
-                    _, train_pred = torch.max(train_outputs, 1)
-                    train_size = train_labels.size(0)
-                    train_corrects = torch.sum(train_pred == train_labels.data)
+                model.eval()
+                train_loss += loss.item()
+                pred = train_outputs.argmax(dim=1, keepdim=True)
+                train_correct = pred.eq(train_labels.view_as(pred)).sum().item()
+                train_acc += (train_correct / len(train_inputs)) * 100
 
-                    train_acc = train_corrects / train_size
+                if i % 10 == 0:
 
                     # Save training loss
-                    train_loss = loss.item()
+                    train_acc_history.append(train_acc / (i + 1))
+                    train_loss_history.append(train_loss / (i + 1))
 
                     valid_correct = 0
                     valid_total = 0
@@ -141,16 +141,13 @@ for model_name, model in my_models.items():
                             valid_total += valid_labels.size(0)
                             valid_correct += (valid_predicted == valid_labels).sum().item()
 
-                    valid_acc = valid_correct / valid_total
-
-                    valid_acc_history.append(valid_acc)
-                    train_acc_history.append(train_acc)
-                    train_loss_history.append(train_loss)
-                    # print(f'Train accuracy: {train_acc:.3f}')
+                        valid_acc = (valid_correct / valid_total) * 100
+                        valid_acc_history.append(valid_acc)
 
             epoch_time = time.time() - start_time
             print(
-                f"Epoch [{epoch + 1}/{EPOCH_SIZE}], Epoch Time: {epoch_time:.4f} s, Validation Accuracy: {valid_acc:.4f}")
+                f"Epoch [{epoch + 1}/{EPOCH_SIZE}], Epoch Time: {epoch_time:.4f} s, Train Loss: {train_loss_history[-1]:.4f}, "
+                f"Train Accuracy: {train_acc_history[-1]:.3f}, Validation Accuracy: {valid_acc_history[-1]:.3f}")
 
         train_acc_history_total.append(train_acc_history)
         train_loss_history_total.append(train_loss_history)
@@ -173,12 +170,12 @@ for model_name, model in my_models.items():
                 # Track the statistics
                 test_total += test_labels.size(0)
                 test_correct += (test_predicted == test_labels).sum().item()
-                test_acc = test_correct / test_total
+                test_acc = (test_correct / test_total) * 100
 
             # Save best weights
             if test_acc > best_performance:
                 best_performance = test_acc
-                best_weights = model.fc1.weight.data.cpu().numpy()
+                best_weights = model.first.weight.data.cpu().numpy()
 
             # Save test accuracy
             test_acc_history.append(test_acc)

@@ -21,10 +21,10 @@ TRAIN_COUNT = 10
 # I tested and saw that CPU is faster than GPU on M1 Pro for MLPs
 
 # CPU
-device = torch.device("cpu")
+# device = torch.device("cpu")
 
 # MPS for GPU support on M1
-# device = torch.device("mps")
+device = torch.device("mps")
 
 print(f"Using device: {device}...")
 
@@ -33,7 +33,7 @@ init_time = time.time()
 # Transformations
 transform = transforms.Compose([
     torchvision.transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
     torchvision.transforms.Grayscale()
 ])
 
@@ -56,24 +56,15 @@ print(f"Test data size: {len(test_data)}")
 
 valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE, shuffle=False)
 
-my_models = {'mlp1': my_models.MLP1(1024, 32, 10).to(device),
-             'mlp2': my_models.MLP2(1024, 32, 64, 10).to(device),
-             # 'cnn3': my_models.CNN3().to(device),
-             # 'cnn4': my_models.CNN4().to(device),
-             # 'cnn5': my_models.CNN5().to(device),
-             }
+my_models_list = [ 'cnn4', ]
 
-for model_name, model in my_models.items():
-    if model_name.startswith('cnn'):
+for model_name in my_models_list:
+    if model_name.startswith('mlp'):
         continue
 
     print(f"Training {model_name}...")
 
     model_init_time = time.time()
-
-    # Loss and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters())
     best_performance = 0
     best_weights = None
 
@@ -83,12 +74,27 @@ for model_name, model in my_models.items():
     test_acc_history_total = []
 
     for tc in range(TRAIN_COUNT):
+
+        if model_name == 'mlp1':
+            model = my_models.MLP1(1024, 32, 10).to(device)
+        elif model_name == 'mlp2':
+            model = my_models.MLP2(1024, 32, 64, 10).to(device)
+        elif model_name == 'cnn3':
+            model = my_models.CNN3().to(device)
+        elif model_name == 'cnn4':
+            model = my_models.CNN4().to(device)
+        elif model_name == 'cnn5':
+            model = my_models.CNN5().to(device)
+
+        # Initialize model
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters())
+
         # Initialize lists for training and validation accuracy and loss
         train_acc_history = []
         train_loss_history = []
         valid_acc_history = []
         test_acc_history = []
-
         train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 
         for epoch in range(EPOCH_SIZE):
@@ -115,14 +121,19 @@ for model_name, model in my_models.items():
                 optimizer.step()
 
                 model.eval()
+
+                # Compute the loss
                 train_loss += loss.item()
+
+                # Compute the accuracy
                 pred = train_outputs.argmax(dim=1, keepdim=True)
+                train_total = train_labels.size(0)
                 train_correct = pred.eq(train_labels.view_as(pred)).sum().item()
-                train_acc += (train_correct / len(train_inputs)) * 100
+                train_acc += (train_correct / train_total) * 100
 
                 if i % 10 == 0:
 
-                    # Save training loss
+                    # Take average of train loss and accuracy
                     train_acc_history.append(train_acc / (i + 1))
                     train_loss_history.append(train_loss / (i + 1))
 

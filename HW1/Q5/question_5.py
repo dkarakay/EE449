@@ -1,5 +1,5 @@
-# Created by Deniz Karakay at 18.04.2023
-# Filename: question_4.py
+# Created by Deniz Karakay at 19.04.2023
+# Filename: question_5.py
 
 import torch
 import torch.nn as nn
@@ -8,20 +8,18 @@ from torchvision import transforms
 import time
 from torch.utils.data import SubsetRandomSampler
 from sklearn.model_selection import train_test_split
-import numpy as np
 import pickle
-from Q4 import models as my_models
-from utils.utils import visualizeWeights
+import models as my_models
 
 # Hyper-parameters
-EPOCH_SIZE = 15
+EPOCH_SIZE = 20
 BATCH_SIZE = 50
 TRAIN_COUNT = 1
 
 # I tested and saw that CPU is faster than GPU on M1 Pro for MLPs
 
 # CPU
-#device = torch.device("cpu")
+# device = torch.device("cpu")
 
 # MPS for GPU support on M1
 device = torch.device("mps")
@@ -56,12 +54,11 @@ print(f"Test data size: {len(test_data)}")
 
 valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE, shuffle=False)
 
-my_models_list = ['mlp1', 'mlp1s', 'mlp2', 'mlp2s', 'cnn3', 'cnn3s', 'cnn4', 'cnn4s', 'cnn5', 'cnn5s']
+my_models_list = ['cnn4_1', 'cnn4_01', 'cnn4_001']
 
-relu_loss_history = []
-relu_grad_history = []
-sigmoid_loss_history = []
-sigmoid_grad_history = []
+train_acc_history_total = []
+train_loss_history_total = []
+valid_acc_history_total = []
 
 for model_name in my_models_list:
     if model_name.startswith('mlp'):
@@ -75,30 +72,29 @@ for model_name in my_models_list:
 
     for tc in range(TRAIN_COUNT):
 
-        if model_name == 'mlp1':
-            model = my_models.MLP1(1024, 32, 10).to(device)
-        elif model_name == 'mlp1s':
-            model = my_models.MLP1S(1024, 32, 10).to(device)
-        elif model_name == 'mlp2':
-            model = my_models.MLP2(1024, 32, 64, 10).to(device)
-        elif model_name == 'mlp2s':
-            model = my_models.MLP2S(1024, 32, 64, 10).to(device)
-        elif model_name == 'cnn3':
-            model = my_models.CNN3().to(device)
-        elif model_name == 'cnn3s':
-            model = my_models.CNN3S().to(device)
-        elif model_name == 'cnn4':
+        # Initialize model for learning rate = 0.1
+        if model_name == 'cnn4_1':
+            lr = 0.1
             model = my_models.CNN4().to(device)
-        elif model_name == 'cnn4s':
-            model = my_models.CNN4S().to(device)
-        elif model_name == 'cnn5':
-            model = my_models.CNN5().to(device)
-        elif model_name == 'cnn5s':
-            model = my_models.CNN5S().to(device)
+
+        # Initialize model for learning rate = 0.01
+        elif model_name == 'cnn4_01':
+            lr = 0.01
+            model = my_models.CNN4().to(device)
+
+        # Initialize model for learning rate = 0.001
+        elif model_name == 'cnn4_001':
+            lr = 0.001
+            model = my_models.CNN4().to(device)
 
         # Initialize model
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0)
+
+        train_acc_history = []
+        train_loss_history = []
+        valid_acc_history = []
+        test_acc_history = []
 
         train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 
@@ -130,46 +126,61 @@ for model_name in my_models_list:
                 # Compute the loss
                 train_loss += loss.item()
 
+                # Compute the accuracy
+                pred = train_outputs.argmax(dim=1, keepdim=True)
+                train_total = train_labels.size(0)
+                train_correct = pred.eq(train_labels.view_as(pred)).sum().item()
+                train_acc += (train_correct / train_total) * 100
+
                 if i % 10 == 0:
-                    model.to('cpu')
-                    weight = model.first.weight.grad
-                    # To indicate the gradient of the first layer better on the plot
-                    train_grad = np.linalg.norm(weight)
-                    model.to(device)
-                    # print(train_grad)
 
-                    if model_name.endswith('s'):
-                        sigmoid_loss_history.append(train_loss / (i + 1))
-                        sigmoid_grad_history.append(train_grad)
+                    # Take average of train loss and accuracy
+                    train_acc_history.append(train_acc / (i + 1))
+                    train_loss_history.append(train_loss / (i + 1))
 
-                    else:
-                        relu_loss_history.append(train_loss / (i + 1))
-                        relu_grad_history.append(train_grad)
+                    valid_correct = 0
+                    valid_total = 0
+                    with torch.no_grad():
+                        for data in valid_generator:
+                            inputs, labels = data
+                            valid_inputs, valid_labels = inputs.to(device), labels.to(device)
+
+                            # Compute the outputs and predictions
+                            valid_outputs = model(valid_inputs)
+                            _, valid_predicted = torch.max(valid_outputs.data, 1)
+
+                            # Track the statistics
+                            valid_total += valid_labels.size(0)
+                            valid_correct += (valid_predicted == valid_labels).sum().item()
+
+                        valid_acc = (valid_correct / valid_total) * 100
+                        valid_acc_history.append(valid_acc)
 
             epoch_time = time.time() - start_time
             print(
-                f"Epoch [{epoch + 1}/{EPOCH_SIZE}], Epoch Time: {epoch_time:.4f} s  Gradient: {train_grad:.4f}  Loss: {train_loss / total_step:.4f}")
+                f"Epoch [{epoch + 1}/{EPOCH_SIZE}], Epoch Time: {epoch_time:.4f} s, Train Loss: {train_loss_history[-1]:.4f}, "
+                f"Train Accuracy: {train_acc_history[-1]:.3f}, Validation Accuracy: {valid_acc_history[-1]:.3f}")
 
+        train_acc_history_total.append(train_acc_history)
+        train_loss_history_total.append(train_loss_history)
+        valid_acc_history_total.append(valid_acc_history)
         took_time = time.time() - model_init_time
         print(f"Training [{tc + 1}/{TRAIN_COUNT}], {took_time:.4f} s, Test Accuracy: {best_performance:.4f}")
 
-    if model_name.endswith('s'):
+    if model_name.endswith('001'):
         # Save the results
         result_dict = {
             'name': model_name.replace('s', ''),
-            'relu_loss_curve': relu_loss_history,
-            'relu_grad_curve': relu_grad_history,
-            'sigmoid_loss_curve': sigmoid_loss_history,
-            'sigmoid_grad_curve': sigmoid_grad_history,
+            'loss_curve_1': train_loss_history_total[0],
+            'loss_curve_01': train_loss_history_total[1],
+            'loss_curve_001': train_loss_history_total[2],
+            'val_acc_curve_1': valid_acc_history_total[0],
+            'val_acc_curve_01': valid_acc_history_total[1],
+            'val_acc_curve_001': valid_acc_history_total[2],
         }
 
-        relu_loss_history = []
-        relu_grad_history = []
-        sigmoid_loss_history = []
-        sigmoid_grad_history = []
-
         # Save the results to a file
-        filename = 'results/question_4_' + model_name.replace('s', '') + '.pkl'
+        filename = 'results/question_5_' + model_name + '.pkl'
         with open(filename, 'wb') as f:
             pickle.dump(result_dict, f)
 

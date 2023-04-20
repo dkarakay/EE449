@@ -13,7 +13,7 @@ import pickle
 import models as my_models
 
 # Hyper-parameters
-EPOCH_SIZE = 20
+EPOCH_SIZE = 30
 BATCH_SIZE = 50
 TRAIN_COUNT = 1
 
@@ -55,138 +55,143 @@ print(f"Test data size: {len(test_data)}")
 
 valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE, shuffle=False)
 
-my_models_list = ['cnn4_1', 'cnn4_01', 'cnn4_001']
+my_models_list = ['cnn4_1']
 
 train_acc_history_total = []
 train_loss_history_total = []
 valid_acc_history_total = []
 
-for model_name in my_models_list:
-    if model_name.startswith('mlp'):
-        continue
+model_name = my_models_list[0]
+print(f"Training {model_name}...")
 
-    print(f"Training {model_name}...")
+model_init_time = time.time()
+best_performance = 0
+best_weights = None
 
-    model_init_time = time.time()
-    best_performance = 0
-    best_weights = None
+for tc in range(TRAIN_COUNT):
 
-    for tc in range(TRAIN_COUNT):
+    # Initialize model for learning rate = 0.1
+    if model_name == 'cnn4_1':
+        lr = 0.1
+        model = my_models.CNN4().to(device)
 
-        # Initialize model for learning rate = 0.1
-        if model_name == 'cnn4_1':
-            lr = 0.1
-            model = my_models.CNN4().to(device)
+    # Initialize model for learning rate = 0.01
+    elif model_name == 'cnn4_01':
+        lr = 0.01
+        model = my_models.CNN4().to(device)
 
-        # Initialize model for learning rate = 0.01
-        elif model_name == 'cnn4_01':
+    # Initialize model for learning rate = 0.001
+    elif model_name == 'cnn4_001':
+        lr = 0.001
+        model = my_models.CNN4().to(device)
+
+    # Initialize model
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0)
+
+    train_acc_history = []
+    train_loss_history = []
+    valid_acc_history = []
+    test_acc_history = []
+
+    train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+
+    for epoch in range(EPOCH_SIZE):
+        # Train the model
+        start_time = time.time()
+        total_step = len(train_generator)
+
+        train_loss = 0
+        train_acc = 0
+
+        if epoch == 10:
             lr = 0.01
-            model = my_models.CNN4().to(device)
-
-        # Initialize model for learning rate = 0.001
-        elif model_name == 'cnn4_001':
+            criterion = nn.CrossEntropyLoss()
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0)
+        if epoch == 20:
             lr = 0.001
-            model = my_models.CNN4().to(device)
+            criterion = nn.CrossEntropyLoss()
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0)
+        for i, data in enumerate(train_generator):
+            model.train()
+            inputs, labels = data
+            train_inputs, train_labels = inputs.to(device), labels.to(device)
 
-        # Initialize model
-        criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0)
+            # Zero the parameter gradients
+            optimizer.zero_grad()
 
-        train_acc_history = []
-        train_loss_history = []
-        valid_acc_history = []
-        test_acc_history = []
+            # Forward + backward + optimize
+            train_outputs = model(train_inputs)
+            loss = criterion(train_outputs, train_labels)
 
-        train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+            loss.backward()
+            optimizer.step()
 
-        for epoch in range(EPOCH_SIZE):
-            # Train the model
-            start_time = time.time()
-            total_step = len(train_generator)
+            model.eval()
 
-            train_loss = 0
-            train_acc = 0
+            # Compute the loss
+            train_loss += loss.item()
 
-            for i, data in enumerate(train_generator):
-                model.train()
-                inputs, labels = data
-                train_inputs, train_labels = inputs.to(device), labels.to(device)
+            # Compute the accuracy
+            pred = train_outputs.argmax(dim=1, keepdim=True)
+            train_total = train_labels.size(0)
+            train_correct = pred.eq(train_labels.view_as(pred)).sum().item()
+            train_acc += (train_correct / train_total) * 100
 
-                # Zero the parameter gradients
-                optimizer.zero_grad()
+            if i % 10 == 0:
 
-                # Forward + backward + optimize
-                train_outputs = model(train_inputs)
-                loss = criterion(train_outputs, train_labels)
+                # Take average of train loss and accuracy
+                train_acc_history.append(train_acc / (i + 1))
+                train_loss_history.append(train_loss / (i + 1))
 
-                loss.backward()
-                optimizer.step()
+                valid_correct = 0
+                valid_total = 0
+                with torch.no_grad():
+                    for data in valid_generator:
+                        inputs, labels = data
+                        valid_inputs, valid_labels = inputs.to(device), labels.to(device)
 
-                model.eval()
+                        # Compute the outputs and predictions
+                        valid_outputs = model(valid_inputs)
+                        _, valid_predicted = torch.max(valid_outputs.data, 1)
 
-                # Compute the loss
-                train_loss += loss.item()
+                        # Track the statistics
+                        valid_total += valid_labels.size(0)
+                        valid_correct += (valid_predicted == valid_labels).sum().item()
 
-                # Compute the accuracy
-                pred = train_outputs.argmax(dim=1, keepdim=True)
-                train_total = train_labels.size(0)
-                train_correct = pred.eq(train_labels.view_as(pred)).sum().item()
-                train_acc += (train_correct / train_total) * 100
+                    valid_acc = (valid_correct / valid_total) * 100
+                    valid_acc_history.append(valid_acc)
 
-                if i % 10 == 0:
+        epoch_time = time.time() - start_time
+        print(
+            f"Epoch [{epoch + 1}/{EPOCH_SIZE}], Epoch Time: {epoch_time:.4f} s, Train Loss: {train_loss_history[-1]:.4f}, "
+            f"Train Accuracy: {train_acc_history[-1]:.3f}, Validation Accuracy: {valid_acc_history[-1]:.3f}")
 
-                    # Take average of train loss and accuracy
-                    train_acc_history.append(train_acc / (i + 1))
-                    train_loss_history.append(train_loss / (i + 1))
+    train_acc_history_total.append(train_acc_history)
+    train_loss_history_total.append(train_loss_history)
+    valid_acc_history_total.append(valid_acc_history)
+    took_time = time.time() - model_init_time
+    print(f"Training [{tc + 1}/{TRAIN_COUNT}], {took_time:.4f} s, Test Accuracy: {best_performance:.4f}")
 
-                    valid_correct = 0
-                    valid_total = 0
-                    with torch.no_grad():
-                        for data in valid_generator:
-                            inputs, labels = data
-                            valid_inputs, valid_labels = inputs.to(device), labels.to(device)
+if model_name.endswith('001'):
+    # Save the results
+    result_dict = {
+        'name': model_name.replace('s', ''),
+        'loss_curve_1': train_loss_history_total[0],
+        'loss_curve_01': train_loss_history_total[1],
+        'loss_curve_001': train_loss_history_total[2],
+        'val_acc_curve_1': valid_acc_history_total[0],
+        'val_acc_curve_01': valid_acc_history_total[1],
+        'val_acc_curve_001': valid_acc_history_total[2],
+    }
 
-                            # Compute the outputs and predictions
-                            valid_outputs = model(valid_inputs)
-                            _, valid_predicted = torch.max(valid_outputs.data, 1)
+    # Save the results to a file
+    filename = 'results/question_5_' + model_name + '.pkl'
+    with open(filename, 'wb') as f:
+        pickle.dump(result_dict, f)
 
-                            # Track the statistics
-                            valid_total += valid_labels.size(0)
-                            valid_correct += (valid_predicted == valid_labels).sum().item()
-
-                        valid_acc = (valid_correct / valid_total) * 100
-                        valid_acc_history.append(valid_acc)
-
-            epoch_time = time.time() - start_time
-            print(
-                f"Epoch [{epoch + 1}/{EPOCH_SIZE}], Epoch Time: {epoch_time:.4f} s, Train Loss: {train_loss_history[-1]:.4f}, "
-                f"Train Accuracy: {train_acc_history[-1]:.3f}, Validation Accuracy: {valid_acc_history[-1]:.3f}")
-
-        train_acc_history_total.append(train_acc_history)
-        train_loss_history_total.append(train_loss_history)
-        valid_acc_history_total.append(valid_acc_history)
-        took_time = time.time() - model_init_time
-        print(f"Training [{tc + 1}/{TRAIN_COUNT}], {took_time:.4f} s, Test Accuracy: {best_performance:.4f}")
-
-    if model_name.endswith('001'):
-        # Save the results
-        result_dict = {
-            'name': model_name.replace('s', ''),
-            'loss_curve_1': train_loss_history_total[0],
-            'loss_curve_01': train_loss_history_total[1],
-            'loss_curve_001': train_loss_history_total[2],
-            'val_acc_curve_1': valid_acc_history_total[0],
-            'val_acc_curve_01': valid_acc_history_total[1],
-            'val_acc_curve_001': valid_acc_history_total[2],
-        }
-
-        # Save the results to a file
-        filename = 'results/question_5_' + model_name + '.pkl'
-        with open(filename, 'wb') as f:
-            pickle.dump(result_dict, f)
-
-        took_time = time.time() - model_init_time
-        print(f"All process for {model_name}: {took_time:.4f} s")
+    took_time = time.time() - model_init_time
+    print(f"All process for {model_name}: {took_time:.4f} s")
 
 took_time = time.time() - init_time
 print(f"All process: {took_time:.4f} s")

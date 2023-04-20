@@ -21,10 +21,10 @@ TRAIN_COUNT = 1
 # I tested and saw that CPU is faster than GPU on M1 Pro for MLPs
 
 # CPU
-device = torch.device("cpu")
+#device = torch.device("cpu")
 
 # MPS for GPU support on M1
-# device = torch.device("mps")
+device = torch.device("mps")
 
 print(f"Using device: {device}...")
 
@@ -59,7 +59,7 @@ valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE,
 my_models_list = ['mlp1', 'mlp1s', 'mlp2', 'mlp2s', 'cnn3', 'cnn3s', 'cnn4', 'cnn4s', 'cnn5', 'cnn5s']
 
 for model_name in my_models_list:
-    if model_name.startswith('cnn'):
+    if model_name.startswith('mlp'):
         continue
 
     print(f"Training {model_name}...")
@@ -98,7 +98,7 @@ for model_name in my_models_list:
 
         # Initialize model
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(model.parameters())
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0)
 
         train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 
@@ -132,9 +132,10 @@ for model_name in my_models_list:
 
                 if i % 10 == 0:
                     model.to('cpu')
-                    weight = model.first.weight.data.numpy().flatten()
-                    model.to(device)
+                    weight = model.first.weight.grad
+                    # To indicate the gradient of the first layer better on the plot
                     train_grad = np.linalg.norm(weight)
+                    model.to(device)
                     # print(train_grad)
 
                     if model_name.endswith('s'):
@@ -155,7 +156,7 @@ for model_name in my_models_list:
     if model_name.endswith('s'):
         # Save the results
         result_dict = {
-            'name': model_name,
+            'name': model_name.replace('s', ''),
             'relu_loss_curve': relu_loss_history,
             'relu_grad_curve': relu_grad_history,
             'sigmoid_loss_curve': sigmoid_loss_history,
@@ -163,7 +164,7 @@ for model_name in my_models_list:
         }
 
         # Save the results to a file
-        filename = 'results/question_4_' + model_name.replace(' ', '_') + '.pkl'
+        filename = 'results/question_4_' + model_name.replace('s', '') + '.pkl'
         with open(filename, 'wb') as f:
             pickle.dump(result_dict, f)
 

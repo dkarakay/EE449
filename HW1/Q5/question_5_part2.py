@@ -13,7 +13,7 @@ import pickle
 import models as my_models
 
 # Hyper-parameters
-EPOCH_SIZE = 30
+EPOCH_SIZE = 45
 BATCH_SIZE = 50
 TRAIN_COUNT = 1
 
@@ -166,32 +166,59 @@ for tc in range(TRAIN_COUNT):
         print(
             f"Epoch [{epoch + 1}/{EPOCH_SIZE}], Epoch Time: {epoch_time:.4f} s, Train Loss: {train_loss_history[-1]:.4f}, "
             f"Train Accuracy: {train_acc_history[-1]:.3f}, Validation Accuracy: {valid_acc_history[-1]:.3f}")
+        print(f"Learning rate: {lr}")
 
-    train_acc_history_total.append(train_acc_history)
-    train_loss_history_total.append(train_loss_history)
-    valid_acc_history_total.append(valid_acc_history)
-    took_time = time.time() - model_init_time
-    print(f"Training [{tc + 1}/{TRAIN_COUNT}], {took_time:.4f} s, Test Accuracy: {best_performance:.4f}")
+        train_acc_history_total.append(train_acc_history)
+        train_loss_history_total.append(train_loss_history)
+        valid_acc_history_total.append(valid_acc_history)
+        took_time = time.time() - model_init_time
+        print(f"Training [{tc + 1}/{TRAIN_COUNT}], {took_time:.4f} s, Test Accuracy: {best_performance:.4f}")
 
-if model_name.endswith('001'):
-    # Save the results
-    result_dict = {
-        'name': model_name.replace('s', ''),
-        'loss_curve_1': train_loss_history_total[0],
-        'loss_curve_01': train_loss_history_total[1],
-        'loss_curve_001': train_loss_history_total[2],
-        'val_acc_curve_1': valid_acc_history_total[0],
-        'val_acc_curve_01': valid_acc_history_total[1],
-        'val_acc_curve_001': valid_acc_history_total[2],
-    }
+        # Evaluate the model on test set
+        test_correct = 0
+        test_total = 0
+        with torch.no_grad():
+            test_generator = torch.utils.data.DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False)
+            model.eval()
+            for data in test_generator:
+                inputs, labels = data
+                test_inputs, test_labels = inputs.to(device), labels.to(device)
 
-    # Save the results to a file
-    filename = 'results/question_5_' + model_name + '.pkl'
-    with open(filename, 'wb') as f:
-        pickle.dump(result_dict, f)
+                # Compute the outputs and predictions
+                test_outputs = model(test_inputs)
+                _, test_predicted = torch.max(test_outputs.data, 1)
 
-    took_time = time.time() - model_init_time
-    print(f"All process for {model_name}: {took_time:.4f} s")
+                # Track the statistics
+                test_total += test_labels.size(0)
+                test_correct += (test_predicted == test_labels).sum().item()
+                test_acc = (test_correct / test_total) * 100
+
+            # Save best weights
+            if test_acc > best_performance:
+                best_performance = test_acc
+                best_weights = model.first.weight.data.cpu().numpy()
+
+            # Save test accuracy
+            test_acc_history.append(test_acc)
+
+        took_time = time.time() - model_init_time
+        print(f"Training [{tc + 1}/{TRAIN_COUNT}], {took_time:.4f} s, Test Accuracy: {best_performance:.4f}")
+
+        print(best_performance)
+
+result_dict = {
+    'name': model_name,
+    'val_acc_curve': valid_acc_history_total[0],
+}
+
+# Save the results to a file
+filename = 'results/question_5_part2_final_cnn4' + '.pkl'
+with open(filename, 'wb') as f:
+    pickle.dump(result_dict, f)
+
+took_time = time.time() - model_init_time
+print(f"All process for {model_name}: {took_time:.4f} s")
 
 took_time = time.time() - init_time
 print(f"All process: {took_time:.4f} s")
+print(f"All process for {model_name}: {took_time:.4f} s")

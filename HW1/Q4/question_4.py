@@ -21,7 +21,7 @@ TRAIN_COUNT = 1
 # I tested and saw that CPU is faster than GPU on M1 Pro for MLPs
 
 # CPU
-#device = torch.device("cpu")
+# device = torch.device("cpu")
 
 # MPS for GPU support on M1
 device = torch.device("mps")
@@ -56,6 +56,7 @@ print(f"Test data size: {len(test_data)}")
 
 valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE, shuffle=False)
 
+# Sigmoid and ReLU based models
 my_models_list = ['mlp1', 'mlp1s', 'mlp2', 'mlp2s', 'cnn3', 'cnn3s', 'cnn4', 'cnn4s', 'cnn5', 'cnn5s']
 
 relu_loss_history = []
@@ -118,11 +119,16 @@ for model_name in my_models_list:
                 # Zero the parameter gradients
                 optimizer.zero_grad()
 
-                # Forward + backward + optimize
+                # Forward pass
                 train_outputs = model(train_inputs)
+
+                # Define loss
                 loss = criterion(train_outputs, train_labels)
 
+                # Backward
                 loss.backward()
+
+                # Update the parameters
                 optimizer.step()
 
                 model.eval()
@@ -131,17 +137,22 @@ for model_name in my_models_list:
                 train_loss += loss.item()
 
                 if i % 10 == 0:
+
+                    # Move model to CPU to compute the gradient
                     model.to('cpu')
+                    # Get the gradient of the first layer
                     weight = model.first.weight.grad
                     # To indicate the gradient of the first layer better on the plot
                     train_grad = np.linalg.norm(weight)
+                    # Move model back to GPU
                     model.to(device)
-                    # print(train_grad)
 
+                    # Sigmoid based models are saved in a different list
                     if model_name.endswith('s'):
                         sigmoid_loss_history.append(train_loss / (i + 1))
                         sigmoid_grad_history.append(train_grad)
 
+                    # ReLU based models are saved in a different list
                     else:
                         relu_loss_history.append(train_loss / (i + 1))
                         relu_grad_history.append(train_grad)

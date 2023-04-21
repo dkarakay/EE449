@@ -60,6 +60,7 @@ train_acc_history_total = []
 train_loss_history_total = []
 valid_acc_history_total = []
 
+# Train models and save results to lists for plotting later
 for model_name in my_models_list:
     if model_name.startswith('mlp'):
         continue
@@ -99,6 +100,7 @@ for model_name in my_models_list:
         train_generator = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 
         for epoch in range(EPOCH_SIZE):
+
             # Train the model
             start_time = time.time()
             total_step = len(train_generator)
@@ -132,6 +134,7 @@ for model_name in my_models_list:
                 train_correct = pred.eq(train_labels.view_as(pred)).sum().item()
                 train_acc += (train_correct / train_total) * 100
 
+                # Print statistics every 10 batches
                 if i % 10 == 0:
 
                     # Take average of train loss and accuracy
@@ -140,6 +143,8 @@ for model_name in my_models_list:
 
                     valid_correct = 0
                     valid_total = 0
+
+                    # Compute the validation accuracy
                     with torch.no_grad():
                         for data in valid_generator:
                             inputs, labels = data

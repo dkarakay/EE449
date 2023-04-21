@@ -56,7 +56,7 @@ print(f"Test data size: {len(test_data)}")
 
 valid_generator = torch.utils.data.DataLoader(valid_data, batch_size=BATCH_SIZE, shuffle=False)
 
-my_models_list = [ 'cnn4', ]
+my_models_list = ['cnn4', ]
 
 for model_name in my_models_list:
     if model_name.startswith('mlp'):
@@ -113,8 +113,10 @@ for model_name in my_models_list:
                 # Zero the parameter gradients
                 optimizer.zero_grad()
 
-                # Forward + backward + optimize
+                # Forward pass
                 train_outputs = model(train_inputs)
+
+                # Define loss function
                 loss = criterion(train_outputs, train_labels)
 
                 loss.backward()
@@ -127,18 +129,21 @@ for model_name in my_models_list:
 
                 # Compute the accuracy
                 pred = train_outputs.argmax(dim=1, keepdim=True)
+
+                # Track the statistics for training accuracy
                 train_total = train_labels.size(0)
                 train_correct = pred.eq(train_labels.view_as(pred)).sum().item()
                 train_acc += (train_correct / train_total) * 100
 
                 if i % 10 == 0:
 
-                    # Take average of train loss and accuracy
+                    # Take average of train loss and accuracy for 10 steps
                     train_acc_history.append(train_acc / (i + 1))
                     train_loss_history.append(train_loss / (i + 1))
 
                     valid_correct = 0
                     valid_total = 0
+
                     with torch.no_grad():
                         for data in valid_generator:
                             inputs, labels = data
@@ -152,6 +157,7 @@ for model_name in my_models_list:
                             valid_total += valid_labels.size(0)
                             valid_correct += (valid_predicted == valid_labels).sum().item()
 
+                        # Take average of validation accuracy
                         valid_acc = (valid_correct / valid_total) * 100
                         valid_acc_history.append(valid_acc)
 
@@ -181,6 +187,8 @@ for model_name in my_models_list:
                 # Track the statistics
                 test_total += test_labels.size(0)
                 test_correct += (test_predicted == test_labels).sum().item()
+
+                # Compute the accuracy
                 test_acc = (test_correct / test_total) * 100
 
             # Save best weights

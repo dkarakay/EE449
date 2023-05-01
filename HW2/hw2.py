@@ -103,10 +103,10 @@ class Individual:
     def eval(self):
         # Convert source and individual to numpy arrays
         source = cv2.imread(IMG_PATH)
-        source_np = np.array(source, dtype=np.int32)
+        source_np = np.array(source, dtype=np.int64)
 
         individual = self.draw()
-        individual_np = np.array(individual, dtype=np.int32)
+        individual_np = np.array(individual, dtype=np.int64)
 
         # Calculate the difference between source and individual
         diff = np.subtract(source_np, individual_np)
@@ -149,6 +149,7 @@ class Individual:
 class Population:
     def __init__(self, num_inds, num_genes):
         self.population = []
+        self.best_population = []
 
         # Create a population with num_inds individuals
         for i in range(num_inds):
@@ -159,10 +160,15 @@ class Population:
         for individual in self.population:
             individual.eval()
 
+    # Sort the population by fitness in descending order
+    def sort_population(self):
+        t = sorted(self.population, key=lambda x: x.fitness, reverse=True)
+        return t
+
     # Select the best num_elites individuals in the population
     # Return the best num_elites individuals and the rest of the population
     def selection(self, num_elites):
-        self.population = sorted(self.population, key=lambda x: x.fitness, reverse=True)
+        self.population = self.sort_population()
         return self.population[:num_elites], self.population[num_elites:]
 
     # Select the best individual in the population using tournament selection
@@ -170,6 +176,7 @@ class Population:
         tournament = random.sample(non_elites, tm_size)
         return max(tournament, key=lambda x: x.fitness)
 
+    # Select two parents from the population using tournament selection
     def crossover(self, parents):
         parent1, parent2 = parents
 
@@ -204,41 +211,42 @@ def evaluationary_algorithm(
     num_parents=4,
     mutation_type="guided",
 ):
-    population = Population(num_inds, num_genes)
+    pop = Population(num_inds, num_genes)
 
     # population.print()
     for generation in range(num_generations):
-        if generation % 100 == 0:
-            print(
-                "Generation:",
-                generation,
-                "Best Fitness:",
-                population.population[0].fitness,
-                "Time:",
-                (time.time() - start_time).__round__(2),
-            )
-        population.evaluate()
+        pop.evaluate()
 
         # Select the best num_elites individuals in the population and the rest of the population
-        elites, non_elites = population.selection(num_elites)
+        elites, non_elites = pop.selection(num_elites)
 
         parents = []
         for i in range(num_parents):
-            parents.append(population.tournament_selection(non_elites, tm_size))
+            parents.append(pop.tournament_selection(non_elites, tm_size))
 
         # Create children from the parents
         children = []
         for i in range(0, len(parents), 2):
-            child1, child2 = population.crossover(parents[i : i + 2])
+            child1, child2 = pop.crossover(parents[i : i + 2])
             children.append(child1)
             children.append(child2)
 
         for individual in non_elites + children:
             individual.mutate(mutation_type)
 
-        population.population = elites + children + non_elites
+        # Add the elites, children and non_elites to the population
+        pop.population = elites + children + non_elites
+        sorted_population = pop.sort_population()
+        best = max(pop.population, key=lambda x: x.fitness)
 
-    best = max(population.population, key=lambda x: x.fitness)
+        if generation % 100 == 0:
+            sorted_population = pop.sort_population()
+            pop.best_population.append(sorted_population[0])
+            # for p in pop.best_population:
+            #    name = self.name + "_" + str(p.id) + ".png"
+            cv2.imwrite(f"results/{generation}.png", pop.best_population[0].draw())
+
+    best = max(pop.population, key=lambda x: x.fitness)
     cv2.imshow("image", best.draw())
     cv2.waitKey(0)
 

@@ -1,6 +1,7 @@
 # Created by Deniz Karakay on 30.04.2023
 # Description: This file contains the main program for the second homework of EE449 course.
 import random
+import time
 import cv2
 import numpy as np
 
@@ -11,22 +12,41 @@ MUTATION_PROB = 0.2
 
 
 class Gene:
-    def __init__(self, id):
+    def __init__(self, id=-2):
         self.id = id
         self.radius = random.randint(1, min(IMG_WIDTH, IMG_HEIGHT) // 2)
-        self.x, self.y = self.check_valid_center()
+        self.x, self.y = self.determine_center_coordinates()
         self.red = random.randint(0, 255)
         self.green = random.randint(0, 255)
         self.blue = random.randint(0, 255)
         self.alpha = random.random()
 
-    def check_valid_center(self):
+    def determine_center_coordinates(self, guided=False):
         while True:
-            x = random.randint(-self.radius, IMG_WIDTH + self.radius)
-            y = random.randint(-self.radius, IMG_HEIGHT + self.radius)
+            if guided:
+                x = self.x + random.randint(-IMG_WIDTH // 4, IMG_WIDTH // 4)
+                y = self.y + random.randint(-IMG_HEIGHT // 4, IMG_HEIGHT // 4)
+            else:
+                x = random.randint(-self.radius, IMG_WIDTH + self.radius)
+                y = random.randint(-self.radius, IMG_HEIGHT + self.radius)
 
             if (x + self.radius) < IMG_WIDTH and (y + self.radius) < IMG_HEIGHT:
                 return x, y
+
+    # Mutate the gene with a guided mutation
+    def guided_mutation(self):
+        self.radius = np.clip(
+            self.radius + random.randint(-10, 10), 1, min(IMG_WIDTH, IMG_HEIGHT) // 2
+        )
+
+        # Determine the center coordinates of the gene
+        self.x, self.y = self.determine_center_coordinates(guided=True)
+
+        # Mutate the color and alpha of the gene
+        self.red = int(np.clip(self.red + random.randint(-64, 64), 0, 255))
+        self.green = int(np.clip(self.green + random.randint(-64, 64), 0, 255))
+        self.blue = int(np.clip(self.blue + random.randint(-64, 64), 0, 255))
+        self.alpha = np.clip(self.alpha + random.uniform(-0.25, 0.25), 0, 1)
 
     # Print every property of the gene in one line
     def print(self):
@@ -69,14 +89,11 @@ class Individual:
             # Create an overlay image
             overlay = img.copy()
 
+            color = (gene.red, gene.green, gene.blue)
+
             # Draw the gene to the image
-            cv2.circle(
-                overlay,
-                (gene.x, gene.y),
-                gene.radius,
-                (gene.red, gene.green, gene.blue),
-                -1,
-            )
+            cv2.circle(overlay, (gene.x, gene.y), gene.radius, color, -1)
+
             img = cv2.addWeighted(overlay, gene.alpha, img, 1 - gene.alpha, 0, img)
         # cv2.imshow("image", img)
         # cv2.waitKey(0)
@@ -103,8 +120,17 @@ class Individual:
         return self.fitness
 
     def mutate(self, mutation_type):
-        if mutation_type == "unguided":
-            print("Unguided Mutation")
+        while random.random() < MUTATION_PROB:
+            random_gene_id = random.randint(0, len(self.chromosome) - 1)
+
+            if mutation_type == "unguided":
+                # print("Unguided Mutation")
+                self.chromosome[random.randint(0, len(self.chromosome) - 1)] = Gene(
+                    id=random_gene_id
+                )
+            elif mutation_type == "guided":
+                # print("Guided Mutation")
+                self.chromosome[random_gene_id].guided_mutation()
 
     # Print every property of the individual in one line
     def print(self):
@@ -170,29 +196,47 @@ class Population:
 
 
 def evaluationary_algorithm(
-    num_inds, num_genes, num_elites=5, tm_size=5, num_parents=4
+    num_inds,
+    num_genes,
+    num_generations,
+    num_elites=5,
+    tm_size=5,
+    num_parents=4,
+    mutation_type="guided",
 ):
     population = Population(num_inds, num_genes)
-    population.print()
-    population.evaluate()
 
-    # Select the best num_elites individuals in the population and the rest of the population
-    elites, non_elites = population.selection(num_elites)
+    # population.print()
+    for generation in range(num_generations):
+        if generation % 100 == 0:
+            print(
+                "Generation:",
+                generation,
+                "Best Fitness:",
+                population.population[0].fitness,
+                "Time:",
+                (time.time() - start_time).__round__(2),
+            )
+        population.evaluate()
 
-    parents = []
-    for i in range(num_parents):
-        parents.append(population.tournament_selection(non_elites, tm_size))
+        # Select the best num_elites individuals in the population and the rest of the population
+        elites, non_elites = population.selection(num_elites)
 
-    print(len(parents))
+        parents = []
+        for i in range(num_parents):
+            parents.append(population.tournament_selection(non_elites, tm_size))
 
-    # Create children from the parents
-    children = []
-    for i in range(0, len(parents), 2):
-        child1, child2 = population.crossover(parents[i : i + 2])
-        children.append(child1)
-        children.append(child2)
+        # Create children from the parents
+        children = []
+        for i in range(0, len(parents), 2):
+            child1, child2 = population.crossover(parents[i : i + 2])
+            children.append(child1)
+            children.append(child2)
 
-    print(len(children))
+        for individual in non_elites + children:
+            individual.mutate(mutation_type)
+
+        population.population = elites + children + non_elites
 
     best = max(population.population, key=lambda x: x.fitness)
     cv2.imshow("image", best.draw())
@@ -200,6 +244,7 @@ def evaluationary_algorithm(
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     num_inds = 20
     num_genes = 50
 
@@ -210,4 +255,10 @@ if __name__ == "__main__":
     IMG_RADIUS = (IMG_WIDTH + IMG_HEIGHT) / 2
     print(IMG_WIDTH, IMG_HEIGHT)
 
-    evaluationary_algorithm(num_inds=num_inds, num_genes=num_genes)
+    evaluationary_algorithm(
+        num_inds=num_inds,
+        num_genes=num_genes,
+        num_generations=1000,
+    )
+
+    print("Execution time:", time.time() - start_time)

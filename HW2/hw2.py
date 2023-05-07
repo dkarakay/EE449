@@ -16,12 +16,33 @@ IMG_HEIGHT = 0
 class Gene:
     def __init__(self, id=-2):
         self.id = id
-        self.radius = random.randint(1, min(IMG_WIDTH, IMG_HEIGHT) // 2)
+        self.radius = random.randint(1, max(IMG_WIDTH, IMG_HEIGHT) // 2)
         self.x, self.y = self.determine_center_coordinates()
         self.red = random.randint(0, 255)
         self.green = random.randint(0, 255)
         self.blue = random.randint(0, 255)
         self.alpha = random.random()
+
+    def is_valid_circle(self, x, y):
+        # Check if the circle is completely outside the image
+        if x - self.radius >= IMG_WIDTH or x + self.radius < 0:
+            return False
+        if y - self.radius >= IMG_HEIGHT or y + self.radius < 0:
+            return False
+
+        # Check if the circle intersects with the image
+        if x - self.radius < 0 or x + self.radius >= IMG_WIDTH:
+            return True
+        if y - self.radius < 0 or y + self.radius >= IMG_HEIGHT:
+            return True
+
+        # Check if the circle is completely inside the image
+        if x - self.radius >= 0 and x + self.radius < IMG_WIDTH:
+            return True
+        if y - self.radius >= 0 and y + self.radius < IMG_HEIGHT:
+            return True
+
+        return False
 
     def determine_center_coordinates(self, guided=False):
         while True:
@@ -29,16 +50,10 @@ class Gene:
                 x = self.x + random.randint(-IMG_WIDTH // 4, IMG_WIDTH // 4)
                 y = self.y + random.randint(-IMG_HEIGHT // 4, IMG_HEIGHT // 4)
             else:
-                x = random.randint(-self.radius * 2, IMG_WIDTH + self.radius * 2)
-                y = random.randint(-self.radius * 2, IMG_HEIGHT + self.radius * 2)
+                x = random.randint(IMG_WIDTH * -1.6, IMG_WIDTH * 1.6)
+                y = random.randint(IMG_HEIGHT * -1.6, IMG_HEIGHT * 1.6)
 
-            # Check if some part of the circle is inside the image although center point is outside
-            if (
-                x - self.radius >= 0
-                and x + self.radius <= IMG_WIDTH
-                and y - self.radius >= 0
-                and y + self.radius <= IMG_HEIGHT
-            ):
+            if self.is_valid_circle(x, y):
                 return x, y
 
     # Mutate the gene with a guided mutation
@@ -312,7 +327,7 @@ def evaluationary_algorithm(
             cv2.imwrite(f"{path}{current_name}.png", sorted_population[0].draw())
 
         if generation % 100 == 0:
-            print("Generation:", generation)
+            print("Generation:", generation, "Time:", time.time() - start_time)
 
     pop.evaluate()
     sorted_population = pop.sort_population()

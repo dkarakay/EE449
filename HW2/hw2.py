@@ -1,6 +1,7 @@
 # Created by Deniz Karakay on 30.04.2023
 # Description: This file contains the main program for the second homework of EE449 course.
 import copy
+import datetime
 import os
 import random
 import shutil
@@ -225,7 +226,7 @@ class Population:
         # Select num_parents individuals from the non_elites using tournament selection
         parents = []
         for i in range(num_parents):
-            tournament = random.sample(non_elites, tm_size)
+            tournament = random.sample(non_elites, min(tm_size, len(non_elites)))
             best = self.sort_inds(tournament)[0]
             parents.append(best)
             non_elites.remove(best)
@@ -275,6 +276,31 @@ def save_population(population, path):
         pickle.dump(population, f, pickle.HIGHEST_PROTOCOL)
 
 
+def print_elapsed_time(elapsed_time):
+    seconds = elapsed_time.seconds
+    minutes = seconds // 60 % 60
+    hours = seconds // 3600 % 3600
+
+    if elapsed_time < datetime.timedelta(minutes=1):
+        return f"{seconds} secs"
+    elif elapsed_time < datetime.timedelta(hours=1):
+        return f"{minutes} mins {seconds % 60} secs"
+    else:
+        return f"{hours} hours {minutes % 60} mins {seconds % 60} secs"
+
+
+def save_all(pop, name, generation, path):
+    sorted_population = pop.sort_population()
+    print(sorted_population[0].fitness)
+    pop.best_population.append(sorted_population[0])
+
+    current_name = f"{name}_{generation}"
+    file_path = f"{path}{current_name}"
+    save_population(pop, file_path)
+
+    cv2.imwrite(f"{path}{current_name}.png", sorted_population[0].draw())
+
+
 def evaluationary_algorithm(
     name,
     num_generations=10000,
@@ -314,31 +340,20 @@ def evaluationary_algorithm(
         # Add the elites, children and non_elites to the population
         pop.population = elites + children + non_elites
 
-        if generation % 200 == 0 and generation != 0:
-            sorted_population = pop.sort_population()
-            print(sorted_population[0].fitness)
-            pop.best_population.append(sorted_population[0])
-
-            current_name = f"{name}_{generation}"
-            file_path = f"{path}{current_name}"
-            save_population(pop, file_path)
-
-            cv2.imwrite(f"{path}{current_name}.png", sorted_population[0].draw())
+        if generation % 1000 == 0 or generation == 0:
+            save_all(pop, name, generation, path)
 
         if generation % 100 == 0:
-            print("Generation:", generation, "Time:", time.time() - start_time)
+            elapsed_time = datetime.datetime.now() - start_time
+            print("Generation:", generation, "Time:", print_elapsed_time(elapsed_time))
 
     pop.evaluate()
-    sorted_population = pop.sort_population()
-    pop.best_population.append(sorted_population[0])
-    current_name = name + "_" + str(generation + 1)
-    file_path = f"{path}{current_name}"
-    save_population(pop, file_path)
-    cv2.imwrite(f"{path}{current_name}.png", pop.best_population[0].draw())
+
+    save_all(pop, name, generation, path)
 
 
 if __name__ == "__main__":
-    start_time = time.time()
+    start_time = datetime.datetime.now()
 
     img = cv2.imread(IMG_PATH)
     IMG_WIDTH = img.shape[0]
@@ -347,23 +362,24 @@ if __name__ == "__main__":
     IMG_RADIUS = (IMG_WIDTH + IMG_HEIGHT) / 2
     # print(IMG_WIDTH, IMG_HEIGHT)
 
-    evaluationary_algorithm(name="default")
+    # evaluationary_algorithm(name="default")
 
-    # NUM_INDS = 5, 10, 40 and 60
-    evaluationary_algorithm(name="num_inds_5", num_inds=5)
-    evaluationary_algorithm(name="num_inds_10", num_inds=10)
-    evaluationary_algorithm(name="num_inds_40", num_inds=40)
-    evaluationary_algorithm(name="num_inds_60", num_inds=60)
+    # # NUM_INDS = 5, 10, 40 and 60
+    # evaluationary_algorithm(name="num_inds_5", num_inds=5)
+    # evaluationary_algorithm(name="num_inds_10", num_inds=10)
+    # evaluationary_algorithm(name="num_inds_40", num_inds=40)
+    # evaluationary_algorithm(name="num_inds_60", num_inds=60)
 
-    # NUM_GENES = 15, 30, 80 and 120
-    evaluationary_algorithm(name="num_genes_15", num_genes=15)
-    evaluationary_algorithm(name="num_genes_30", num_genes=30)
-    evaluationary_algorithm(name="num_genes_80", num_genes=80)
-    evaluationary_algorithm(name="num_genes_120", num_genes=120)
+    # # NUM_GENES = 15, 30, 80 and 120
+    # evaluationary_algorithm(name="num_genes_15", num_genes=15)
+    # evaluationary_algorithm(name="num_genes_30", num_genes=30)
+    # evaluationary_algorithm(name="num_genes_80", num_genes=80)
+    # evaluationary_algorithm(name="num_genes_120", num_genes=120)
 
-    # TM_SIZE = 2 and 8
-    evaluationary_algorithm(name="tm_size_2", tm_size=2)
+    # TM_SIZE = 2, 8 and 16
+    # evaluationary_algorithm(name="tm_size_2", tm_size=2)
     evaluationary_algorithm(name="tm_size_8", tm_size=8)
+    evaluationary_algorithm(name="tm_size_16", tm_size=16)
 
     # FRACTION_ELITES = 0.04 and 0.35
     evaluationary_algorithm(name="fraction_elites_0.04", fraction_elites=0.04)

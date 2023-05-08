@@ -7,6 +7,7 @@ import shutil
 import time
 import cv2
 import numpy as np
+import pickle
 
 IMG_PATH = "painting.png"
 IMG_WIDTH = 0
@@ -198,7 +199,7 @@ class Population:
         t = sorted(self.population, key=lambda x: x.fitness, reverse=True)
         return t
 
-    # Sort the population by fitness in descending order
+    # Sort the population by fitness in descending order with respect to the given population
     def sort_inds(self, pop):
         return sorted(pop, key=lambda x: x.fitness, reverse=True)
 
@@ -270,10 +271,8 @@ class Population:
 
 
 def save_population(population, path):
-    import pickle
-
     with open(path + ".pkl", "wb") as f:
-        pickle.dump(population, f)
+        pickle.dump(population, f, pickle.HIGHEST_PROTOCOL)
 
 
 def evaluationary_algorithm(
@@ -315,7 +314,7 @@ def evaluationary_algorithm(
         # Add the elites, children and non_elites to the population
         pop.population = elites + children + non_elites
 
-        if generation % 1000 == 0 and generation != 0:
+        if generation % 200 == 0 and generation != 0:
             sorted_population = pop.sort_population()
             print(sorted_population[0].fitness)
             pop.best_population.append(sorted_population[0])
@@ -349,5 +348,38 @@ if __name__ == "__main__":
     # print(IMG_WIDTH, IMG_HEIGHT)
 
     evaluationary_algorithm(name="default")
+
+    # NUM_INDS = 5, 10, 40 and 60
+    evaluationary_algorithm(name="num_inds_5", num_inds=5)
+    evaluationary_algorithm(name="num_inds_10", num_inds=10)
+    evaluationary_algorithm(name="num_inds_40", num_inds=40)
+    evaluationary_algorithm(name="num_inds_60", num_inds=60)
+
+    # NUM_GENES = 15, 30, 80 and 120
+    evaluationary_algorithm(name="num_genes_15", num_genes=15)
+    evaluationary_algorithm(name="num_genes_30", num_genes=30)
+    evaluationary_algorithm(name="num_genes_80", num_genes=80)
+    evaluationary_algorithm(name="num_genes_120", num_genes=120)
+
+    # TM_SIZE = 2 and 8
+    evaluationary_algorithm(name="tm_size_2", tm_size=2)
+    evaluationary_algorithm(name="tm_size_8", tm_size=8)
+
+    # FRACTION_ELITES = 0.04 and 0.35
+    evaluationary_algorithm(name="fraction_elites_0.04", fraction_elites=0.04)
+    evaluationary_algorithm(name="fraction_elites_0.35", fraction_elites=0.35)
+
+    # FRACTION_PARENTS = 0.15, 0.3 and 0.75
+    evaluationary_algorithm(name="fraction_parents_0.15", fraction_parents=0.15)
+    evaluationary_algorithm(name="fraction_parents_0.3", fraction_parents=0.3)
+    evaluationary_algorithm(name="fraction_parents_0.75", fraction_parents=0.75)
+
+    # MUTATION_PROB = 0.1, 0.4 and 0.75
+    evaluationary_algorithm(name="mutation_prob_0.1", mutation_prob=0.1)
+    evaluationary_algorithm(name="mutation_prob_0.4", mutation_prob=0.4)
+    evaluationary_algorithm(name="mutation_prob_0.75", mutation_prob=0.75)
+
+    # MUTATION_TYPE = "unguided"
+    evaluationary_algorithm(name="mutation_type_unguided", mutation_type="unguided")
 
     print("Execution time:", time.time() - start_time)

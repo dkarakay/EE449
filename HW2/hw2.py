@@ -289,16 +289,15 @@ def print_elapsed_time(elapsed_time):
         return f"{hours} hours {minutes % 60} mins {seconds % 60} secs"
 
 
-def save_all(pop, name, generation, path):
-    sorted_population = pop.sort_population()
-    print(sorted_population[0].fitness)
-    pop.best_population.append(sorted_population[0])
+def save_all(pop, name, generation, path, best_population, image_only=True):
+    print(best_population.fitness)
 
     current_name = f"{name}_{generation}"
     file_path = f"{path}{current_name}"
-    save_population(pop, file_path)
+    if not image_only:
+        save_population(pop, file_path)
 
-    cv2.imwrite(f"{path}{current_name}.png", sorted_population[0].draw())
+    cv2.imwrite(f"{path}{current_name}.png", best_population.draw())
 
 
 def evaluationary_algorithm(
@@ -340,16 +339,20 @@ def evaluationary_algorithm(
         # Add the elites, children and non_elites to the population
         pop.population = elites + children + non_elites
 
+        sorted_population = pop.sort_population()
+        pop.best_population.append(sorted_population[0])
+
         if generation % 1000 == 0 or generation == 0:
-            save_all(pop, name, generation, path)
+            save_all(pop, name, generation, path, sorted_population[0])
 
         if generation % 100 == 0:
             elapsed_time = datetime.datetime.now() - start_time
             print("Generation:", generation, "Time:", print_elapsed_time(elapsed_time))
 
     pop.evaluate()
-
-    save_all(pop, name, generation, path)
+    sorted_population = pop.sort_population()
+    pop.best_population.append(sorted_population[0])
+    save_all(pop, name, 10000, path, sorted_population[0], image_only=False)
 
 
 if __name__ == "__main__":
@@ -360,24 +363,23 @@ if __name__ == "__main__":
     IMG_HEIGHT = img.shape[1]
 
     IMG_RADIUS = (IMG_WIDTH + IMG_HEIGHT) / 2
-    # print(IMG_WIDTH, IMG_HEIGHT)
 
-    # evaluationary_algorithm(name="default")
+    evaluationary_algorithm(name="default")
 
     # # NUM_INDS = 5, 10, 40 and 60
-    # evaluationary_algorithm(name="num_inds_5", num_inds=5)
-    # evaluationary_algorithm(name="num_inds_10", num_inds=10)
-    # evaluationary_algorithm(name="num_inds_40", num_inds=40)
-    # evaluationary_algorithm(name="num_inds_60", num_inds=60)
+    evaluationary_algorithm(name="num_inds_5", num_inds=5)
+    evaluationary_algorithm(name="num_inds_10", num_inds=10)
+    evaluationary_algorithm(name="num_inds_40", num_inds=40)
+    evaluationary_algorithm(name="num_inds_60", num_inds=60)
 
     # # NUM_GENES = 15, 30, 80 and 120
-    # evaluationary_algorithm(name="num_genes_15", num_genes=15)
-    # evaluationary_algorithm(name="num_genes_30", num_genes=30)
-    # evaluationary_algorithm(name="num_genes_80", num_genes=80)
-    # evaluationary_algorithm(name="num_genes_120", num_genes=120)
+    evaluationary_algorithm(name="num_genes_15", num_genes=15)
+    evaluationary_algorithm(name="num_genes_30", num_genes=30)
+    evaluationary_algorithm(name="num_genes_80", num_genes=80)
+    evaluationary_algorithm(name="num_genes_120", num_genes=120)
 
     # TM_SIZE = 2, 8 and 16
-    # evaluationary_algorithm(name="tm_size_2", tm_size=2)
+    evaluationary_algorithm(name="tm_size_2", tm_size=2)
     evaluationary_algorithm(name="tm_size_8", tm_size=8)
     evaluationary_algorithm(name="tm_size_16", tm_size=16)
 
@@ -398,4 +400,4 @@ if __name__ == "__main__":
     # MUTATION_TYPE = "unguided"
     evaluationary_algorithm(name="mutation_type_unguided", mutation_type="unguided")
 
-    print("Execution time:", time.time() - start_time)
+    print("Execution time:", print_elapsed_time(datetime.datetime.now() - start_time))

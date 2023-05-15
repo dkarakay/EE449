@@ -46,6 +46,7 @@ class Gene:
 
         return False
 
+    # Determine the center coordinates of the gene
     def determine_center_coordinates(self, guided=False):
         while True:
             if guided:
@@ -72,6 +73,36 @@ class Gene:
         self.green = int(np.clip(self.green + random.randint(-64, 64), 0, 255))
         self.blue = int(np.clip(self.blue + random.randint(-64, 64), 0, 255))
         self.alpha = np.clip(self.alpha + random.uniform(-0.25, 0.25), 0, 1)
+
+    # Mutate the gene with a guided mutation
+    def more_guided_mutation(self):
+        self.radius = np.clip(
+            self.radius + random.randint(-20, 20), 1, min(IMG_WIDTH, IMG_HEIGHT) // 2
+        )
+
+        # Determine the center coordinates of the gene
+        self.x, self.y = self.determine_center_coordinates(guided=True)
+
+        # Mutate the color and alpha of the gene
+        self.red = int(np.clip(self.red + random.randint(-128, 128), 0, 255))
+        self.green = int(np.clip(self.green + random.randint(-128, 128), 0, 255))
+        self.blue = int(np.clip(self.blue + random.randint(-128, 128), 0, 255))
+        self.alpha = np.clip(self.alpha + random.uniform(-0.5, 0.5), 0, 1)
+
+    # Mutate the gene with a guided mutation
+    def less_guided_mutation(self):
+        self.radius = np.clip(
+            self.radius + random.randint(-5, 5), 1, min(IMG_WIDTH, IMG_HEIGHT) // 2
+        )
+
+        # Determine the center coordinates of the gene
+        self.x, self.y = self.determine_center_coordinates(guided=True)
+
+        # Mutate the color and alpha of the gene
+        self.red = int(np.clip(self.red + random.randint(-32, 32), 0, 255))
+        self.green = int(np.clip(self.green + random.randint(-32, 32), 0, 255))
+        self.blue = int(np.clip(self.blue + random.randint(-32, 32), 0, 255))
+        self.alpha = np.clip(self.alpha + random.uniform(-0.12, 0.12), 0, 1)
 
     # Print every property of the gene in one line
     def print(self):
@@ -121,11 +152,10 @@ class Individual:
             cv2.circle(overlay, (gene.x, gene.y), gene.radius, color, -1)
 
             img = cv2.addWeighted(overlay, gene.alpha, img, 1 - gene.alpha, 0, img)
-        # cv2.imshow("image", img)
-        # cv2.waitKey(0)
 
         return img
 
+    # Evaluate the fitness of the individual
     def eval(self):
         # Convert source and individual to numpy arrays
         source = cv2.imread(IMG_PATH)
@@ -145,6 +175,7 @@ class Individual:
 
         return self.fitness
 
+    # Mutate the individual with mutation_type
     def mutate(self, mutation_type, mutation_prob):
         mutations = []
         while random.random() < mutation_prob:
@@ -158,13 +189,15 @@ class Individual:
 
             mutations.append(random_gene_id)
             if mutation_type == "unguided":
-                # print("Unguided Mutation")
                 self.chromosome[random.randint(0, len(self.chromosome) - 1)] = Gene(
                     id=random_gene_id
                 )
             elif mutation_type == "guided":
-                # print("Guided Mutation")
                 self.chromosome[random_gene_id].guided_mutation()
+            elif mutation_type == "more_guided":
+                self.chromosome[random_gene_id].more_guided_mutation()
+            elif mutation_type == "less_guided":
+                self.chromosome[random_gene_id].less_guided_mutation()
 
     # Print every property of the individual in one line
     def print(self):
@@ -271,11 +304,13 @@ class Population:
             individual.print()
 
 
+# Save the population to a file using pickle
 def save_population(population, path):
     with open(path + ".pkl", "wb") as f:
         pickle.dump(population, f, pickle.HIGHEST_PROTOCOL)
 
 
+# Print the elapsed time in a readable format
 def print_elapsed_time(elapsed_time):
     seconds = elapsed_time.seconds
     minutes = seconds // 60 % 60
@@ -289,6 +324,7 @@ def print_elapsed_time(elapsed_time):
         return f"{hours} hours {minutes % 60} mins {seconds % 60} secs"
 
 
+# Save the population and the best individual
 def save_all(pop, name, generation, path, best_population, image_only=True):
     print(best_population.fitness)
 
@@ -300,7 +336,8 @@ def save_all(pop, name, generation, path, best_population, image_only=True):
     cv2.imwrite(f"{path}{current_name}.png", best_population.draw())
 
 
-def evaluationary_algorithm(
+# Run the evolutionary algorithm for the given parameters
+def evolutionary_algorithm(
     name,
     num_generations=10000,
     num_inds=20,
@@ -347,8 +384,130 @@ def evaluationary_algorithm(
 
         if generation % 100 == 0:
             elapsed_time = datetime.datetime.now() - start_time
-            print("Generation:", generation, "Time:", print_elapsed_time(elapsed_time))
+            print(
+                "Generation:",
+                generation,
+                "Time:",
+                print_elapsed_time(elapsed_time),
+                "Fitness:",
+                sorted_population[0].fitness,
+            )
 
+    pop.evaluate()
+    sorted_population = pop.sort_population()
+    pop.best_population.append(sorted_population[0])
+    save_all(pop, name, 10000, path, sorted_population[0], image_only=False)
+
+
+# Run the evolutionary algorithm for suggestions
+def evolutionary_algorithm_for_suggestions(
+    name,
+    num_generations=10000,
+    num_inds=20,
+    num_genes=50,
+    tm_size=5,
+    mutation_type="guided",
+    fraction_elites=0.2,
+    fraction_parents=0.6,
+    mutation_prob=0.2,
+    suggestion_type="changing_mutation",
+):
+    path = f"results/{name}/"
+
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+    pop = Population(num_inds, num_genes)
+
+    for generation in range(num_generations):
+        # Changing mutation probability
+        if suggestion_type == "changing_mutation":
+            if generation == 1:
+                fraction_parents = 0.7
+            elif generation == 750:
+                mutation_prob = 0.6
+            elif generation == 2000:
+                mutation_prob = 0.5
+            elif generation == 4000:
+                mutation_prob = 0.4
+            elif generation == 8000:
+                mutation_prob = 0.3
+            elif generation == 9000:
+                mutation_prob = 0.2
+
+        # Changing fraction of parents and elites
+        elif suggestion_type == "changing_fraction_parents_elites":
+            if generation == 1:
+                fraction_parents = 0.75
+                fraction_elites = 0.03
+            elif generation == 750:
+                fraction_parents = 0.7
+                fraction_elites = 0.05
+            elif generation == 2000:
+                fraction_parents = 0.65
+                fraction_elites = 0.08
+            elif generation == 4000:
+                fraction_parents = 0.6
+                fraction_elites = 0.1
+            elif generation == 8000:
+                fraction_parents = 0.5
+                fraction_elites = 0.2
+            elif generation == 9000:
+                fraction_parents = 0.4
+                fraction_elites = 0.25
+
+        # Changing mutation type
+        elif suggestion_type == "changing_mutation_type":
+            if generation == 1:
+                mutation_type = "unguided"
+            elif generation == 750:
+                mutation_type = "less_guided"
+            elif generation == 3000:
+                mutation_type = "guided"
+            elif generation == 6000:
+                mutation_type = "more_guided"
+
+        pop.evaluate()
+
+        # Select the best num_elites individuals in the population and the rest of the population
+        elites, non_elites, parents = pop.selection(
+            fraction_elites, fraction_parents, tm_size
+        )
+
+        # Create children from the parents
+        children = pop.crossover(parents, num_genes)
+
+        # Mutate the children and non_elites
+        for individual in non_elites + children:
+            individual.mutate(mutation_type, mutation_prob)
+
+        # Add the elites, children and non_elites to the population
+        pop.population = elites + children + non_elites
+
+        # Sort the population by fitness
+        sorted_population = pop.sort_population()
+        pop.best_population.append(sorted_population[0])
+
+        # Save the best individual and the population in every 1000 generations
+        if generation % 1000 == 0 or generation == 0:
+            save_all(pop, name, generation, path, sorted_population[0])
+
+        # Print the generation, elapsed time and fitness in every 100 generations
+        if generation % 100 == 0:
+            elapsed_time = datetime.datetime.now() - start_time
+            print(
+                "Generation:",
+                generation,
+                "Time:",
+                print_elapsed_time(elapsed_time),
+                "Fitness:",
+                sorted_population[0].fitness,
+            )
+
+    # Evaluate the population one last time
     pop.evaluate()
     sorted_population = pop.sort_population()
     pop.best_population.append(sorted_population[0])
@@ -364,40 +523,66 @@ if __name__ == "__main__":
 
     IMG_RADIUS = (IMG_WIDTH + IMG_HEIGHT) / 2
 
-    evaluationary_algorithm(name="default")
+    # evolutionary_algorithm_for_suggestions(
+    #    name="tttt",
+    #    mutation_prob=0.4,
+    #    suggestion_type="changing_mutation_type",
+    # )
+
+    # evolutionary_algorithm_for_suggestions(
+    #    name="suggestion_changing_mutation_type",
+    #    mutation_prob=0.4,
+    #    suggestion_type="changing_mutation_type",
+    # )
+
+    # evolutionary_algorithm_for_suggestions(
+    #    name="suggestion_changing_mutation",
+    #    suggestion_type="changing_mutation",
+    # )
+
+    # evolutionary_algorithm_for_suggestions(
+    #    name="suggestion_changing_fraction_parents_elites",
+    #    suggestion_type="changing_fraction_parents_elites",
+    # )
+
+    elapsed_time = datetime.datetime.now() - start_time
+    print("All time:", print_elapsed_time(elapsed_time))
+
+"""     evolutionary_algorithm(name="default")
 
     # # NUM_INDS = 5, 10, 40 and 60
-    evaluationary_algorithm(name="num_inds_5", num_inds=5)
-    evaluationary_algorithm(name="num_inds_10", num_inds=10)
-    evaluationary_algorithm(name="num_inds_40", num_inds=40)
-    evaluationary_algorithm(name="num_inds_60", num_inds=60)
+    evolutionary_algorithm(name="num_inds_5", num_inds=5)
+    evolutionary_algorithm(name="num_inds_10", num_inds=10)
+    evolutionary_algorithm(name="num_inds_40", num_inds=40)
+    evolutionary_algorithm(name="num_inds_60", num_inds=60)
 
     # # NUM_GENES = 15, 30, 80 and 120
-    evaluationary_algorithm(name="num_genes_15", num_genes=15)
-    evaluationary_algorithm(name="num_genes_30", num_genes=30)
-    evaluationary_algorithm(name="num_genes_80", num_genes=80)
-    evaluationary_algorithm(name="num_genes_120", num_genes=120)
+    evolutionary_algorithm(name="num_genes_15", num_genes=15)
+    evolutionary_algorithm(name="num_genes_30", num_genes=30)
+    evolutionary_algorithm(name="num_genes_80", num_genes=80)
+    evolutionary_algorithm(name="num_genes_120", num_genes=120)
 
     # TM_SIZE = 2, 8 and 16
-    evaluationary_algorithm(name="tm_size_2", tm_size=2)
-    evaluationary_algorithm(name="tm_size_8", tm_size=8)
-    evaluationary_algorithm(name="tm_size_16", tm_size=16)
+    evolutionary_algorithm(name="tm_size_2", tm_size=2)
+    evolutionary_algorithm(name="tm_size_8", tm_size=8)
+    evolutionary_algorithm(name="tm_size_16", tm_size=16)
 
     # FRACTION_ELITES = 0.04 and 0.35
-    evaluationary_algorithm(name="fraction_elites_0.04", fraction_elites=0.04)
-    evaluationary_algorithm(name="fraction_elites_0.35", fraction_elites=0.35)
+    evolutionary_algorithm(name="fraction_elites_0.04", fraction_elites=0.04)
+    evolutionary_algorithm(name="fraction_elites_0.35", fraction_elites=0.35)
 
     # FRACTION_PARENTS = 0.15, 0.3 and 0.75
-    evaluationary_algorithm(name="fraction_parents_0.15", fraction_parents=0.15)
-    evaluationary_algorithm(name="fraction_parents_0.3", fraction_parents=0.3)
-    evaluationary_algorithm(name="fraction_parents_0.75", fraction_parents=0.75)
+    evolutionary_algorithm(name="fraction_parents_0.15", fraction_parents=0.15)
+    evolutionary_algorithm(name="fraction_parents_0.3", fraction_parents=0.3)
+    evolutionary_algorithm(name="fraction_parents_0.75", fraction_parents=0.75)
 
     # MUTATION_PROB = 0.1, 0.4 and 0.75
-    evaluationary_algorithm(name="mutation_prob_0.1", mutation_prob=0.1)
-    evaluationary_algorithm(name="mutation_prob_0.4", mutation_prob=0.4)
-    evaluationary_algorithm(name="mutation_prob_0.75", mutation_prob=0.75)
+    evolutionary_algorithm(name="mutation_prob_0.1", mutation_prob=0.1)
+    evolutionary_algorithm(name="mutation_prob_0.4", mutation_prob=0.4)
+    evolutionary_algorithm(name="mutation_prob_0.75", mutation_prob=0.75)
 
     # MUTATION_TYPE = "unguided"
-    evaluationary_algorithm(name="mutation_type_unguided", mutation_type="unguided")
+    evolutionary_algorithm(name="mutation_type_unguided", mutation_type="unguided")
 
-    print("Execution time:", print_elapsed_time(datetime.datetime.now() - start_time))
+    elapsed_time = datetime.datetime.now() - start_time
+    print("All time:", print_elapsed_time(elapsed_time)) """

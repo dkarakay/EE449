@@ -21,22 +21,19 @@ folders = [
 
 folders.sort()
 for folder in folders:
-    if folder.startswith("default"):
-        all = []
-        p = pickle.load(
-            open(f"results/{folder}/{folder}_10000.pkl", "rb")
-        )  # type: Population
+    all = []
+    p = pickle.load(
+        open(f"results/{folder}/{folder}_10000.pkl", "rb")
+    )  # type: Population
 
-        fitnesses = [i.fitness for i in p.population]
-        x = np.sort(fitnesses)
-        y = sorted(p.population, key=lambda x: x.fitness, reverse=True)
-        print(folder, ":", len(p.best_population))
+    fitnesses = [i.fitness for i in p.population]
+    x = np.sort(fitnesses)
+    y = sorted(p.population, key=lambda x: x.fitness, reverse=True)
+    print(folder, ":", len(p.best_population))
 
-        for i in range(len(p.best_population)):
-            all.append(p.best_population[i].fitness)
+    for i in range(len(p.best_population)):
+        all.append(p.best_population[i].fitness)
 
-        all = ensure_non_decreasing(all)
+    all = ensure_non_decreasing(all)
 
-        # Print values each 100 generations
-        for i in range(0, len(all), 100):
-            print(i, all[i])
+    print(folder, all[-1])

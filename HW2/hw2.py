@@ -1,5 +1,11 @@
-# Created by Deniz Karakay on 30.04.2023
+# Created by Deniz Karakay (2443307) on 30.04.2023
 # Description: This file contains the main program for the second homework of EE449 course.
+#              The program uses evolutionary algorithm to create an image that looks like the given image.
+#              The given image is painting.png that it Café Terrace at Night by Vincent van Gogh.
+#              The program also contains 3 suggestions for the evolutionary algorithm.
+#              The program can be run with the following command:
+#              python hw2.py
+
 import copy
 import datetime
 import os
@@ -10,6 +16,7 @@ import cv2
 import numpy as np
 import pickle
 
+# Global variables for the image
 IMG_PATH = "painting.png"
 IMG_WIDTH = 0
 IMG_HEIGHT = 0
@@ -74,7 +81,7 @@ class Gene:
         self.blue = int(np.clip(self.blue + random.randint(-64, 64), 0, 255))
         self.alpha = np.clip(self.alpha + random.uniform(-0.25, 0.25), 0, 1)
 
-    # Mutate the gene with a guided mutation
+    # Mutate the gene with more guided mutation (for suggestions)
     def more_guided_mutation(self):
         self.radius = np.clip(
             self.radius + random.randint(-20, 20), 1, min(IMG_WIDTH, IMG_HEIGHT) // 2
@@ -89,7 +96,7 @@ class Gene:
         self.blue = int(np.clip(self.blue + random.randint(-128, 128), 0, 255))
         self.alpha = np.clip(self.alpha + random.uniform(-0.5, 0.5), 0, 1)
 
-    # Mutate the gene with a guided mutation
+    # Mutate the gene with less guided mutation (for suggestions)
     def less_guided_mutation(self):
         self.radius = np.clip(
             self.radius + random.randint(-5, 5), 1, min(IMG_WIDTH, IMG_HEIGHT) // 2
@@ -194,8 +201,10 @@ class Individual:
                 )
             elif mutation_type == "guided":
                 self.chromosome[random_gene_id].guided_mutation()
+            # For suggestions (dynamic mutation type)
             elif mutation_type == "more_guided":
                 self.chromosome[random_gene_id].more_guided_mutation()
+            # For suggestions (dynamic mutation type)
             elif mutation_type == "less_guided":
                 self.chromosome[random_gene_id].less_guided_mutation()
 
@@ -331,8 +340,10 @@ def save_all(pop, name, generation, path, best_population, image_only=True):
     current_name = f"{name}_{generation}"
     file_path = f"{path}{current_name}"
     if not image_only:
+        # Save the population
         save_population(pop, file_path)
 
+    # Save the best individual
     cv2.imwrite(f"{path}{current_name}.png", best_population.draw())
 
 
@@ -348,17 +359,22 @@ def evolutionary_algorithm(
     fraction_parents=0.6,
     mutation_prob=0.2,
 ):
+    # Create a folder for the results
     path = f"results/{name}/"
 
+    # Delete the folder if it exists
     if os.path.exists(path):
         shutil.rmtree(path)
 
+    # Create the folder if it does not exist
     if not os.path.exists(path):
         os.mkdir(path)
 
+    # Create a population with num_inds individuals
     pop = Population(num_inds, num_genes)
 
     for generation in range(num_generations):
+        # Evaluate the population
         pop.evaluate()
 
         # Select the best num_elites individuals in the population and the rest of the population
@@ -410,7 +426,7 @@ def evolutionary_algorithm_for_suggestions(
     fraction_elites=0.2,
     fraction_parents=0.6,
     mutation_prob=0.2,
-    suggestion_type="changing_mutation",
+    suggestion_type="dynamic_mutation",
 ):
     path = f"results/{name}/"
 
@@ -423,10 +439,10 @@ def evolutionary_algorithm_for_suggestions(
     pop = Population(num_inds, num_genes)
 
     for generation in range(num_generations):
-        # Changing mutation probability
-        if suggestion_type == "changing_mutation":
+        # Dynamic mutation probability
+        if suggestion_type == "dynamic_mutation":
             if generation == 1:
-                fraction_parents = 0.7
+                mutation_prob = 0.7
             elif generation == 750:
                 mutation_prob = 0.6
             elif generation == 2000:
@@ -438,8 +454,8 @@ def evolutionary_algorithm_for_suggestions(
             elif generation == 9000:
                 mutation_prob = 0.2
 
-        # Changing fraction of parents and elites
-        elif suggestion_type == "changing_fraction_parents_elites":
+        # Dynamic fraction of parents and elites
+        elif suggestion_type == "dynamic_fraction_parents_elites":
             if generation == 1:
                 fraction_parents = 0.75
                 fraction_elites = 0.03
@@ -459,8 +475,8 @@ def evolutionary_algorithm_for_suggestions(
                 fraction_parents = 0.4
                 fraction_elites = 0.25
 
-        # Changing mutation type
-        elif suggestion_type == "changing_mutation_type":
+        # Dynamic mutation type
+        elif suggestion_type == "dynamic_mutation_type":
             if generation == 1:
                 mutation_type = "unguided"
             elif generation == 750:
@@ -523,32 +539,15 @@ if __name__ == "__main__":
 
     IMG_RADIUS = (IMG_WIDTH + IMG_HEIGHT) / 2
 
-    # evolutionary_algorithm_for_suggestions(
-    #    name="tttt",
-    #    mutation_prob=0.4,
-    #    suggestion_type="changing_mutation_type",
-    # )
-
-    # evolutionary_algorithm_for_suggestions(
-    #    name="suggestion_changing_mutation_type",
-    #    mutation_prob=0.4,
-    #    suggestion_type="changing_mutation_type",
-    # )
-
-    # evolutionary_algorithm_for_suggestions(
-    #    name="suggestion_changing_mutation",
-    #    suggestion_type="changing_mutation",
-    # )
-
-    # evolutionary_algorithm_for_suggestions(
-    #    name="suggestion_changing_fraction_parents_elites",
-    #    suggestion_type="changing_fraction_parents_elites",
-    # )
-
-    elapsed_time = datetime.datetime.now() - start_time
-    print("All time:", print_elapsed_time(elapsed_time))
-
-"""     evolutionary_algorithm(name="default")
+    # Default parameters
+    # Num_inds = 20,
+    # Num_genes = 50,
+    # Tm_size = 5,
+    # Fraction_elites = 0.2,
+    # Fraction_parents = 0.6,
+    # Mutation_prob = 0.2,
+    # Mutation_type = "guided"
+    evolutionary_algorithm(name="default")
 
     # # NUM_INDS = 5, 10, 40 and 60
     evolutionary_algorithm(name="num_inds_5", num_inds=5)
@@ -584,5 +583,26 @@ if __name__ == "__main__":
     # MUTATION_TYPE = "unguided"
     evolutionary_algorithm(name="mutation_type_unguided", mutation_type="unguided")
 
+    # SUGGESTIONS
+
+    # Suggestion #1 - Dynamic mutation probability
+    evolutionary_algorithm_for_suggestions(
+        name="suggestion_dynamic_mutation",
+        suggestion_type="dynamic_mutation",
+    )
+
+    # Suggestion #2 - Dynamic mutation type
+    evolutionary_algorithm_for_suggestions(
+        name="suggestion_dynamic_mutation_type",
+        suggestion_type="dynamic_mutation_type",
+    )
+
+    # Suggestion #3 - Dynamic Parent and Elite Selection
+    evolutionary_algorithm_for_suggestions(
+        name="suggestion_dynamic_fraction_parents_elites",
+        suggestion_type="dynamic_fraction_parents_elites",
+    )
+
+    # Print the elapsed time
     elapsed_time = datetime.datetime.now() - start_time
-    print("All time:", print_elapsed_time(elapsed_time)) """
+    print("All time:", print_elapsed_time(elapsed_time))

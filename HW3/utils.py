@@ -24,6 +24,8 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
         self.chk_dir = chk_dir
         self.save_path = os.path.join(chk_dir, "models")
         self.best_mean_reward = -np.inf
+        self.save_freq_checkpoints = [0, 10000, 50000, 100000, 250000, 500000, 1000000]
+
 
     def _init_callback(self) -> None:
         # Create folder if needed
@@ -32,9 +34,10 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         if self.n_calls % self.save_freq == 0:
-            if self.verbose > 0:
-                print(f"Saving current model to {os.path.join(self.chk_dir, 'models')}")
-            self.model.save(os.path.join(self.save_path, f"iter_{self.n_calls}"))
+            if self.n_calls in self.save_freq_checkpoints:
+                if self.verbose > 0:
+                    print(f"Saving current model to {os.path.join(self.chk_dir, 'models')}")
+                self.model.save(os.path.join(self.save_path, f"iter_{self.n_calls}"))
 
         if self.n_calls % self.check_freq == 0:
             # Retrieve training reward

@@ -138,6 +138,38 @@ plt.title("Train Loss vs. Step for PPO3 and DQN3")
 plt.legend()
 plt.savefig("plots/ppo3_dqn3_train_loss.png")
 
+
+# Plot entropy loss for PPO1 and train loss for DQN1
+plt.figure()
+plt.plot(PPO_ELs[0]["Step"], PPO_ELs[0]["Value"], label="PPO1")
+plt.plot(DQN_TLs[0]["Step"], DQN_TLs[0]["Value"], label="DQN1")
+plt.xlabel("Step")
+plt.ylabel("Loss")
+plt.title("Entropy Loss of PPO1 and Train Loss of DQN1 vs. Step")
+plt.legend()
+plt.savefig("plots/ppo1_entropy_loss_dqn1_train_loss.png")
+
+# Plot entropy loss for PPO2 and train loss for DQN2
+plt.figure()
+plt.plot(PPO_ELs[1]["Step"], PPO_ELs[1]["Value"], label="PPO2")
+plt.plot(DQN_TLs[1]["Step"], DQN_TLs[1]["Value"], label="DQN2")
+plt.xlabel("Step")
+plt.ylabel("Loss")
+plt.title("Entropy Loss of PPO2 and Train Loss of DQN2 vs. Step")
+plt.legend()
+plt.savefig("plots/ppo2_entropy_loss_dqn2_train_loss.png")
+
+
+# Plot entropy loss for PPO3 and train loss for DQN3
+plt.figure()
+plt.plot(PPO_ELs[2]["Step"], PPO_ELs[2]["Value"], label="PPO3")
+plt.plot(DQN_TLs[2]["Step"], DQN_TLs[2]["Value"], label="DQN3")
+plt.xlabel("Step")
+plt.ylabel("Loss")
+plt.title("Entropy Loss of PPO3 and Train Loss of DQN3 vs. Step")
+plt.legend()
+plt.savefig("plots/ppo3_entropy_loss_dqn3_train_loss.png")
+
 # Plot all train loss
 plt.figure()
 plt.plot(PPO_TLs[0]["Step"], PPO_TLs[0]["Value"], label="PPO1")
@@ -151,3 +183,20 @@ plt.ylabel("Train Loss")
 plt.title("Train Loss vs. Step for All Models")
 plt.legend()
 plt.savefig("plots/all_train_loss.png")
+
+# Plot entropy loss for all PPO models and train loss for all DQN models
+plt.figure()
+plt.plot(PPO_ELs[0]["Step"], PPO_ELs[0]["Value"], label="PPO1")
+plt.plot(PPO_ELs[1]["Step"], PPO_ELs[1]["Value"], label="PPO2")
+plt.plot(PPO_ELs[2]["Step"], PPO_ELs[2]["Value"], label="PPO3")
+plt.plot(DQN_TLs[0]["Step"], DQN_TLs[0]["Value"], label="DQN1")
+plt.plot(DQN_TLs[1]["Step"], DQN_TLs[1]["Value"], label="DQN2")
+plt.plot(DQN_TLs[2]["Step"], DQN_TLs[2]["Value"], label="DQN3")
+plt.xlabel("Step")
+plt.ylabel("Loss")
+plt.title("Entropy Loss of PPO Models and Train Loss of DQN Models vs. Step")
+plt.legend()
+plt.savefig("plots/all_entropy_loss_and_train_loss.png")
+
+
+# P

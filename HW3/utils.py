@@ -6,6 +6,7 @@ from gym.wrappers import RecordVideo
 from time import time
 import datetime
 
+
 class SaveOnBestTrainingRewardCallback(BaseCallback):
     """
     Taken from https://stable-baselines3.readthedocs.io/en/master/guide/examples.html
@@ -13,7 +14,7 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
     based on the training reward (in practice, we recommend using ``EvalCallback``).
     :param check_freq:
     :param chk_dir: Path to the folder where the model will be saved.
-      It must contains the file created by the ``Monitor`` wrapper.
+    It must contains the file created by the ``Monitor`` wrapper.
     :param verbose: Verbosity level.
     """
 
@@ -27,7 +28,6 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
         self.save_freq_checkpoints = [1, 10000, 50000, 100000, 250000, 500000, 1000000]
         self.start_time = datetime.datetime.now()
 
-
     def _init_callback(self) -> None:
         # Create folder if needed
         if self.save_path is not None:
@@ -37,7 +37,9 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
         if self.n_calls % self.save_freq == 0:
             if self.n_calls in self.save_freq_checkpoints:
                 if self.verbose > 0:
-                    print(f"Saving current model to {os.path.join(self.chk_dir, 'models')}")
+                    print(
+                        f"Saving current model to {os.path.join(self.chk_dir, 'models')}"
+                    )
                 self.model.save(os.path.join(self.save_path, f"iter_{self.n_calls}"))
 
         if self.n_calls % self.check_freq == 0:
@@ -51,7 +53,9 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                     print(
                         f"Best mean reward: {self.best_mean_reward:.2f} - Last mean reward per episode: {mean_reward:.2f}"
                     )
-                    print(f"Elapsed time: {print_elapsed_time( datetime.datetime.now() - self.start_time)}")
+                    print(
+                        f"Elapsed time: {print_elapsed_time( datetime.datetime.now() - self.start_time)}"
+                    )
 
                 # New best model, you could save the agent here
                 if mean_reward > self.best_mean_reward:
@@ -103,6 +107,7 @@ def saveGameModel(env, model, len=100000, dir="./videos/"):
         action, _ = model.predict(state)
         state, _, fin, _ = env.step(action)
     env.close()
+
 
 # Print the elapsed time in a readable format
 def print_elapsed_time(elapsed_time):

@@ -1,8 +1,19 @@
+#
+# Created on Sat Jun 10 2023
+#
+# Deniz Karakay 2443307
+#
+# EE449 HW3 - Plotting
+#
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
 PPOs = ["PPO1", "PPO2", "PPO3"]
 DQNs = ["DQN1", "DQN2", "DQN3"]
+
+best_name = ["PPO2_best"]
 
 PPO_ELs = []
 PPO_ERMs = []
@@ -11,6 +22,12 @@ PPO_TLs = []
 DQN_ERMs = []
 DQN_TLs = []
 
+
+BEST_EL = pd.read_csv("csv/entropy_loss/" + best_name[0] + ".csv")
+BEST_ERM = pd.read_csv("csv/ep_rew_mean/" + best_name[0] + ".csv")
+BEST_TL = pd.read_csv("csv/train_loss/" + best_name[0] + ".csv")
+
+
 for ppo in PPOs:
     df = pd.read_csv("csv/entropy_loss/" + ppo + ".csv")
     PPO_ELs.append(df)
@@ -18,10 +35,6 @@ for ppo in PPOs:
 for ppo in PPOs:
     df = pd.read_csv("csv/ep_rew_mean/" + ppo + ".csv")
     PPO_ERMs.append(df)
-
-    steps = df["Step"]
-    values = df["Value"]
-
 
 for ppo in PPOs:
     df = pd.read_csv("csv/train_loss/" + ppo + ".csv")
@@ -199,4 +212,29 @@ plt.legend()
 plt.savefig("plots/all_entropy_loss_and_train_loss.png")
 
 
-# P
+# Plot best episode reward mean
+plt.figure()
+plt.plot(BEST_ERM["Step"], BEST_ERM["Value"], label="Best (PPO2)")
+plt.xlabel("Step")
+plt.ylabel("Episode Reward Mean")
+plt.title("Best Episode Reward Mean vs. Step (PPO2)")
+plt.legend()
+plt.savefig("plots/best_ep_rew_mean.png")
+
+# Plot best train loss
+plt.figure()
+plt.plot(BEST_TL["Step"], BEST_TL["Value"], label="Best (PPO2)")
+plt.xlabel("Step")
+plt.ylabel("Train Loss")
+plt.title("Best Train Loss vs. Step (PPO2)")
+plt.legend()
+plt.savefig("plots/best_train_loss.png")
+
+# Plot best entropy loss
+plt.figure()
+plt.plot(BEST_EL["Step"], BEST_EL["Value"], label="Best (PPO2)")
+plt.xlabel("Step")
+plt.ylabel("Entropy Loss")
+plt.title("Best Entropy Loss vs. Step (PPO2)")
+plt.legend()
+plt.savefig("plots/best_entropy_loss.png")

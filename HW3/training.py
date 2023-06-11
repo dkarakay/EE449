@@ -3,7 +3,7 @@
 #
 # Deniz Karakay 2443307
 #
-# EE449 HW3
+# EE449 HW3 - Training
 #
 
 
@@ -21,19 +21,24 @@ from utils import SaveOnBestTrainingRewardCallback, startGameModel, startGameRan
 
 
 def create_environment(type, checkpoint):
-    # folder_name = f"./video/{name}/{uuid.uuid4()}"
     env = gym_super_mario_bros.make("SuperMarioBros-v0")
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
+
+    # 1st Preprocessing - Type 0 for PPO1 and DQN1
     if type == 0:
         env = GrayScaleObservation(env, keep_dim=True)
         env = DummyVecEnv([lambda: env])
         env = VecFrameStack(env, n_stack=4, channels_order="last")
         env = VecMonitor(env, f"{checkpoint}/TestMonitor")
+
+    # 2nd Preprocessing - Type 1 for PPO2 and DQN2
     elif type == 1:
         env = GrayScaleObservation(env, keep_dim=False)
         env = DummyVecEnv([lambda: env])
         env = VecFrameStack(env, n_stack=2)
         env = VecMonitor(env, f"{checkpoint}/TestMonitor")
+
+    # 3rd Preprocessing - Type 2 for PPO3 and DQN3
     elif type == 2:
         env = GrayScaleObservation(env, keep_dim=True)
         env = DummyVecEnv([lambda: env])
@@ -42,6 +47,7 @@ def create_environment(type, checkpoint):
     return env
 
 
+# Checkpoints
 CHECKPOINT_DIR_PPO1 = "./train/PPO1/"
 CHECKPOINT_DIR_PPO2 = "./train/PPO2/"
 CHECKPOINT_DIR_PPO3 = "./train/PPO3/"
@@ -51,6 +57,7 @@ CHECKPOINT_DIR_DQN3 = "./train/DQN2_2/"
 CHECKPOINT_DIR_DQN2 = "./train/DQN2_MLP_2/"
 CHECKPOINT_DIR_DQN3 = "./train/DQN3/"
 CHECKPOINT_DIR_DQN_BEST = "./train/DQN_BEST/"
+CHECKPOINT_DIR_PPO_BEST = "./train/PPO_BEST/"
 
 LOG_DIR = "./logs/"
 
@@ -159,6 +166,7 @@ env_dqn3 = create_environment(2, CHECKPOINT_DIR_DQN3)
 callback_dqn3 = SaveOnBestTrainingRewardCallback(
     save_freq=10000, check_freq=1000, chk_dir=CHECKPOINT_DIR_DQN3
 )
+
 model_dqn3 = DQN(
     "CnnPolicy",
     env_dqn3,
@@ -180,28 +188,20 @@ model_dqn3.learn(
     tb_log_name="DQN3",
 )
 
-# Train Best DQN 3
-env_dqn_best = create_environment(2, CHECKPOINT_DIR_DQN_BEST)
-callback_dqn_best = SaveOnBestTrainingRewardCallback(
-    save_freq=10000, check_freq=1000, chk_dir=CHECKPOINT_DIR_DQN_BEST
+
+# Train PPO2 _best - Env 1 - MLP
+env_ppo_best = create_environment(1, CHECKPOINT_DIR_PPO_BEST)
+callback_ppo_best = SaveOnBestTrainingRewardCallback(
+    save_freq=10000, check_freq=1000, chk_dir=CHECKPOINT_DIR_PPO_BEST
 )
-model_dqn_best = DQN(
-    "CnnPolicy",
-    env_dqn_best,
-    batch_size=165,
+model_ppo_best = PPO(
+    "MlpPolicy",
+    env_ppo_best,
     verbose=1,
-    learning_starts=10000,
-    learning_rate=20e-3,
-    exploration_fraction=0.3,
-    exploration_initial_eps=1.0,
-    exploration_final_eps=0.15,
-    train_freq=8,
-    buffer_size=10000,
     tensorboard_log=LOG_DIR,
+    learning_rate=0.000015,
+    n_steps=1536,
 )
-model_dqn_best.learn(
-    total_timesteps=1000000,
-    log_interval=1,
-    callback=callback_dqn_best,
-    tb_log_name="DQN3",
+model_ppo_best.learn(
+    total_timesteps=1000000, callback=callback_ppo_best, tb_log_name="PPO_BEST"
 )
